@@ -1,7 +1,33 @@
-// src/types/index.ts - UPDATED centralized exports
+// // src/types/index.ts - UPDATED centralized exports with Category types
+// export * from './auth';
+// export * from './api';
+// export * from './admin'; // This now includes user management and category types
+
+// // Re-export commonly used types for convenience
+// export type { User, AuthState, AuthResponse} from './auth';
+// export type { ApiResponse, ApiSuccess, ApiError } from './api';
+// export type { 
+//   AdminStats, 
+//   SystemSettings, 
+//   SystemHealth, 
+//   ApplicationMetrics, 
+//   GlobalProgress,
+//   UserListItem,
+//   RoleChangeRequest,
+//   Category,
+//   CategoryStats,
+//   CreateCategoryRequest,
+//   UpdateCategoryRequest,
+//   DeleteCategoryResponse,
+// } from './admin';
+
+// // Export UserRole as both type and value (enum)
+// export { UserRole } from './auth';
+
+// src/types/index.ts - UPDATED centralized exports with Category and Question types
 export * from './auth';
 export * from './api';
-export * from './admin'; // This now includes user management types too
+export * from './admin'; // This now includes user management, category, and question types
 
 // Re-export commonly used types for convenience
 export type { User, AuthState, AuthResponse} from './auth';
@@ -14,8 +40,24 @@ export type {
   GlobalProgress,
   UserListItem,
   RoleChangeRequest,
-  RoleChangeHistory 
+  Category,
+  CategoryStats,
+  CreateCategoryRequest,
+  UpdateCategoryRequest,
+  DeleteCategoryResponse,
+  Question,
+  QuestionDetail,
+  QuestionPageResponse,
+  QuestionFilters,
+  QuestionStats,
+  CreateQuestionRequest,
+  UpdateQuestionRequest,
+  CodeSnippet,
+  ImageUploadResponse,
+  FileUploadResponse,
+  Solution,
 } from './admin';
 
-// Export UserRole as both type and value (enum)
+// Export UserRole and QuestionLevel as both type and value (enum)
 export { UserRole } from './auth';
+export { QuestionLevel } from './admin';
