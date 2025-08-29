@@ -83,6 +83,7 @@ function QuestionCard({ question }: { question: Question }) {
           </div>
 
           {/* Images indicator */}
+          <div className="flex items-center gap-4 text-sm"> 
           {question.imageUrls && question.imageUrls.length > 0 && (
             <div className="mt-3 flex items-center text-sm text-blue-600">
               <EyeIcon className="h-4 w-4 mr-1" />
@@ -90,6 +91,16 @@ function QuestionCard({ question }: { question: Question }) {
             </div>
           )}
 
+          {/* Code snippets indicator */}
+            {question.codeSnippets && question.codeSnippets.length > 0 && (
+              <div className="flex items-center text-green-600">
+                <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                {question.codeSnippets.length} template{question.codeSnippets.length !== 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
           {/* Footer */}
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center justify-between text-sm text-gray-500">

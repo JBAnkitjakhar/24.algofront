@@ -1,29 +1,3 @@
-// // src/types/index.ts - UPDATED centralized exports with Category types
-// export * from './auth';
-// export * from './api';
-// export * from './admin'; // This now includes user management and category types
-
-// // Re-export commonly used types for convenience
-// export type { User, AuthState, AuthResponse} from './auth';
-// export type { ApiResponse, ApiSuccess, ApiError } from './api';
-// export type { 
-//   AdminStats, 
-//   SystemSettings, 
-//   SystemHealth, 
-//   ApplicationMetrics, 
-//   GlobalProgress,
-//   UserListItem,
-//   RoleChangeRequest,
-//   Category,
-//   CategoryStats,
-//   CreateCategoryRequest,
-//   UpdateCategoryRequest,
-//   DeleteCategoryResponse,
-// } from './admin';
-
-// // Export UserRole as both type and value (enum)
-// export { UserRole } from './auth';
-
 // src/types/index.ts - UPDATED centralized exports with Category and Question types
 export * from './auth';
 export * from './api';
