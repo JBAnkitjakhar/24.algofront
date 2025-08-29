@@ -1,4 +1,5 @@
 // src/lib/api/client.ts
+
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { API_BASE_URL } from '@/constants';
 import type { ApiResponse, ApiError } from '@/types';

@@ -33,7 +33,7 @@ function CallbackHandler() {
     
     // If no token and no error, this might be an invalid callback
     if (!token && !error) {
-      console.log('No token or error in callback, redirecting to login');
+      // console.log('No token or error in callback, redirecting to login');
       router.replace(ROUTES.LOGIN);
       return;
     }
@@ -61,16 +61,16 @@ function CallbackHandler() {
           return;
         }
 
-        console.log('Token received, setting up authentication...');
+        // console.log('Token received, setting up authentication...');
         
         // Store token in cookies before API call using centralized cookie manager
         cookieManager.setToken(result.token);
 
         // Get user info using the token
-        console.log('Fetching user info...');
+        // console.log('Fetching user info...');
         const userResponse = await authService.getCurrentUser();
         
-        console.log('User response received:', userResponse);
+        // console.log('User response received:', userResponse);
         
         if (!userResponse.success || !userResponse.data) {
           const errorMessage = userResponse.message || 'Failed to get user information';
@@ -88,7 +88,7 @@ function CallbackHandler() {
           refreshToken: result.token, // Backend should provide separate refresh token
         }));
 
-        console.log('Login successful, redirecting...');
+        // console.log('Login successful, redirecting...');
         toast.success(`Welcome back, ${userResponse.data.name}!`);
 
         // Mark as processed

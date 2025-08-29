@@ -10,7 +10,7 @@ export class AuthService {
     const response = await apiClient.get<User>('/auth/me');
     
     // Debug log to see what we're getting
-    console.log('Auth service response:', response);
+    // console.log('Auth service response:', response);
     
     return response;
   }
