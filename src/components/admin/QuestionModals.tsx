@@ -556,7 +556,7 @@ export function EditQuestionModal({ isOpen, onClose, question }: EditQuestionMod
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-6xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <div className="flex items-center justify-between mb-6">
                   <Dialog.Title
                     as="h3"
@@ -646,6 +646,17 @@ export function EditQuestionModal({ isOpen, onClose, question }: EditQuestionMod
                       maxLength={QUESTION_VALIDATION.STATEMENT_MAX_LENGTH}
                       uploadedImages={formData.imageUrls || []}
                       onImagesChange={(images) => updateFormData('imageUrls', images)}
+                    />
+                  </div>
+
+                  {/* Code Snippets Section */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Starter Code Templates (Optional)
+                    </label>
+                    <CodeSnippetsManager
+                      codeSnippets={formData.codeSnippets || []}
+                      onChange={(snippets) => updateFormData('codeSnippets', snippets)}
                     />
                   </div>
 
@@ -750,7 +761,7 @@ export function DeleteQuestionModal({ isOpen, onClose, question }: DeleteQuestio
                     
                     <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
                       <p className="text-sm text-red-800 font-medium">
-                        ⚠️ Warning: This will permanently delete:
+                        Warning: This will permanently delete:
                       </p>
                       <ul className="mt-2 text-sm text-red-700 space-y-1">
                         <li>• The question and all its content</li>
