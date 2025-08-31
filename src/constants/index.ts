@@ -1,4 +1,4 @@
-// src/constants/index.ts - UPDATED to match backend endpoints exactly
+// src/constants/index.ts - Updated to include solution constants
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api';
 
@@ -18,7 +18,7 @@ export const ADMIN_ENDPOINTS = {
   PROGRESS: `${API_BASE_URL}/admin/progress`,
   HEALTH: `${API_BASE_URL}/admin/health`,
   METRICS: `${API_BASE_URL}/admin/metrics`,
-  // User management endpoints - UPDATED to match backend exactly
+  // User management endpoints
   USERS: `${API_BASE_URL}/admin/users`,
   USER_BY_ID: (id: string) => `${API_BASE_URL}/admin/users/${id}`,
   USERS_BY_ROLE: (role: string) => `${API_BASE_URL}/admin/users/role/${role}`,
@@ -26,7 +26,7 @@ export const ADMIN_ENDPOINTS = {
   USER_PERMISSIONS: `${API_BASE_URL}/admin/users/permissions`,
 } as const;
 
-// ADDED: Category management endpoints
+// Category management endpoints
 export const CATEGORY_ENDPOINTS = {
   LIST: `${API_BASE_URL}/categories`,
   CREATE: `${API_BASE_URL}/categories`,
@@ -36,7 +36,7 @@ export const CATEGORY_ENDPOINTS = {
   GET_STATS: (id: string) => `${API_BASE_URL}/categories/${id}/stats`,
 } as const;
 
-// ADDED: Question management endpoints
+// Question management endpoints
 export const QUESTION_ENDPOINTS = {
   LIST: `${API_BASE_URL}/questions`,
   CREATE: `${API_BASE_URL}/questions`,
@@ -47,12 +47,42 @@ export const QUESTION_ENDPOINTS = {
   STATS: `${API_BASE_URL}/questions/stats`,
 } as const;
 
-// ADDED: File upload endpoints
+// ADDED: Solution management endpoints
+export const SOLUTION_ENDPOINTS = {
+  LIST: `${API_BASE_URL}/solutions`,
+  GET_BY_ID: (id: string) => `${API_BASE_URL}/solutions/${id}`,
+  BY_QUESTION: (questionId: string) => `${API_BASE_URL}/solutions/question/${questionId}`,
+  CREATE_FOR_QUESTION: (questionId: string) => `${API_BASE_URL}/solutions/question/${questionId}`,
+  UPDATE: (id: string) => `${API_BASE_URL}/solutions/${id}`,
+  DELETE: (id: string) => `${API_BASE_URL}/solutions/${id}`,
+  STATS: `${API_BASE_URL}/solutions/stats`,
+  WITH_IMAGES: `${API_BASE_URL}/solutions/with-images`,
+  WITH_VISUALIZERS: `${API_BASE_URL}/solutions/with-visualizers`,
+  WITH_YOUTUBE: `${API_BASE_URL}/solutions/with-youtube`,
+  BY_CREATOR: (creatorId: string) => `${API_BASE_URL}/solutions/creator/${creatorId}`,
+  // Link validation
+  VALIDATE_YOUTUBE: `${API_BASE_URL}/solutions/validate-youtube`,
+  VALIDATE_DRIVE: `${API_BASE_URL}/solutions/validate-drive`,
+  // Image management
+  ADD_IMAGE: (id: string) => `${API_BASE_URL}/solutions/${id}/images`,
+  REMOVE_IMAGE: (id: string) => `${API_BASE_URL}/solutions/${id}/images`,
+  // Visualizer management
+  ADD_VISUALIZER: (id: string) => `${API_BASE_URL}/solutions/${id}/visualizers`,
+  REMOVE_VISUALIZER: (id: string) => `${API_BASE_URL}/solutions/${id}/visualizers`,
+} as const;
+
+// File upload endpoints
 export const FILE_ENDPOINTS = {
   CONFIG: `${API_BASE_URL}/files/config`,
   UPLOAD_QUESTION_IMAGE: `${API_BASE_URL}/files/images/questions`,
   UPLOAD_SOLUTION_IMAGE: `${API_BASE_URL}/files/images/solutions`,
+  DELETE_IMAGE: `${API_BASE_URL}/files/images`,
   HEALTH_CHECK: `${API_BASE_URL}/files/health/cloudinary`,
+  // ADDED: Visualizer endpoints
+  UPLOAD_VISUALIZER: (solutionId: string) => `${API_BASE_URL}/files/visualizers/${solutionId}`,
+  GET_VISUALIZER: (fileId: string) => `${API_BASE_URL}/files/visualizers/${fileId}`,
+  DELETE_VISUALIZER: (fileId: string) => `${API_BASE_URL}/files/visualizers/${fileId}`,
+  VISUALIZERS_BY_SOLUTION: (solutionId: string) => `${API_BASE_URL}/files/solutions/${solutionId}/visualizers`,
 } as const;
 
 // Routes
@@ -108,7 +138,7 @@ export const USER_ROLE_LABELS = {
   SUPERADMIN: 'Super Admin',
 } as const;
 
-// CONSOLIDATED Query keys for all features
+// Query keys for all features
 export const QUERY_KEYS = {
   AUTH: {
     USER: ['auth', 'user'] as const,
@@ -140,13 +170,22 @@ export const QUERY_KEYS = {
     SEARCH: (query: string) => ['questions', 'search', query] as const,
     BY_CATEGORY: (categoryId: string) => ['questions', 'category', categoryId] as const,
   },
+  // ADDED: Solution query keys
+  SOLUTIONS: {
+    LIST: ['solutions', 'list'] as const,
+    DETAIL: (id: string) => ['solutions', 'detail', id] as const,
+    BY_QUESTION: (questionId: string) => ['solutions', 'question', questionId] as const,
+    BY_CREATOR: (creatorId: string) => ['solutions', 'creator', creatorId] as const,
+    STATS: ['solutions', 'stats'] as const,
+    VISUALIZERS: (solutionId?: string) => solutionId ? ['solutions', 'visualizers', solutionId] as const : ['solutions', 'visualizers'] as const,
+  },
   FILES: {
     CONFIG: ['files', 'config'] as const,
     UPLOAD: ['files', 'upload'] as const,
   },
 } as const;
 
-// ADDED: Question validation constants
+// Question validation constants
 export const QUESTION_VALIDATION = {
   TITLE_MIN_LENGTH: 5,
   TITLE_MAX_LENGTH: 200,
@@ -156,14 +195,24 @@ export const QUESTION_VALIDATION = {
   MAX_CODE_SNIPPETS: 10,
 } as const;
 
-// ADDED: Question level display labels
+// ADDED: Solution validation constants
+export const SOLUTION_VALIDATION = {
+  CONTENT_MIN_LENGTH: 20,
+  CONTENT_MAX_LENGTH: 15000,
+  MAX_IMAGES_PER_SOLUTION: 10,
+  MAX_VISUALIZERS_PER_SOLUTION: 2,
+  CODE_MAX_LENGTH: 10000,
+  DESCRIPTION_MAX_LENGTH: 200,
+} as const;
+
+// Question level display labels
 export const QUESTION_LEVEL_LABELS = {
   EASY: 'Easy',
   MEDIUM: 'Medium',
   HARD: 'Hard',
 } as const;
 
-// ADDED: Question level colors for UI
+// Question level colors for UI
 export const QUESTION_LEVEL_COLORS = {
   EASY: {
     bg: 'bg-green-50',
@@ -182,7 +231,7 @@ export const QUESTION_LEVEL_COLORS = {
   },
 } as const;
 
-// ADDED: Category validation constants
+// Category validation constants
 export const CATEGORY_VALIDATION = {
   NAME_MIN_LENGTH: 2,
   NAME_MAX_LENGTH: 50,

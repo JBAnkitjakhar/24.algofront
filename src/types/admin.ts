@@ -1,4 +1,4 @@
-// src/types/admin.ts - UPDATED: Added Category types
+// src/types/admin.ts
 
 import { UserRole } from "./auth";
 
@@ -323,4 +323,129 @@ export interface Solution {
   updatedAt: string;
   youtubeEmbedUrl?: string;
   youtubeVideoId?: string;
+}
+
+// ==================== SOLUTION TYPES ====================
+
+export interface Solution {
+  id: string;
+  questionId: string;
+  questionTitle: string;
+  content: string;
+  driveLink?: string;
+  youtubeLink?: string;
+  imageUrls?: string[];
+  visualizerFileIds?: string[];
+  codeSnippet?: CodeSnippet;
+  createdByName: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  youtubeEmbedUrl?: string;
+  youtubeVideoId?: string;
+}
+
+export interface SolutionDetail extends Solution {
+  question: Question;
+}
+
+export interface CreateSolutionRequest {
+  content: string;
+  codeSnippet?: CodeSnippet;
+  driveLink?: string;
+  youtubeLink?: string;
+  imageUrls?: string[];
+  visualizerFileIds?: string[];
+}
+
+export interface UpdateSolutionRequest {
+  content: string;
+  codeSnippet?: CodeSnippet;
+  driveLink?: string;
+  youtubeLink?: string;
+  imageUrls?: string[];
+  visualizerFileIds?: string[];
+}
+
+// Paginated Solution Response (matches Spring Boot Page)
+export interface SolutionPageResponse {
+  content: Solution[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: {
+      empty: boolean;
+      sorted: boolean;
+      unsorted: boolean;
+    };
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  last: boolean;
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  sort: {
+    empty: boolean;
+    sorted: boolean;
+    unsorted: boolean;
+  };
+  first: boolean;
+  numberOfElements: number;
+  empty: boolean;
+}
+
+export interface SolutionFilters {
+  questionId?: string;
+  creatorId?: string;
+  hasImages?: boolean;
+  hasVisualizers?: boolean;
+  hasYoutubeLink?: boolean;
+  hasDriveLink?: boolean;
+}
+
+export interface SolutionStats {
+  totalSolutions: number;
+  solutionsWithImages: number;
+  solutionsWithVisualizers: number;
+  solutionsWithYoutubeVideos: number;
+  solutionsWithDriveLinks: number;
+  solutionsWithBothLinks: number;
+}
+
+export interface LinkValidationResponse {
+  valid: boolean;
+  error?: string;
+  videoId?: string; // For YouTube links
+  embedUrl?: string; // For YouTube links
+  originalUrl?: string;
+}
+
+// ==================== VISUALIZER FILE TYPES ====================
+
+export interface VisualizerFile {
+  fileId: string;
+  filename: string;
+  originalFileName: string;
+  size: number;
+  uploadDate: string;
+  solutionId: string;
+}
+
+export interface VisualizerUploadResponse {
+  fileId: string;
+  filename: string;
+  originalFileName: string;
+  size: number;
+  solutionId: string;
+  uploadedAt: number;
+}
+
+export interface VisualizerFilesResponse {
+  success: boolean;
+  data: VisualizerFile[];
+  count: number;
+  solutionId: string;
 }

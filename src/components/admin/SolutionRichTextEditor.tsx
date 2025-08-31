@@ -71,6 +71,59 @@ const PROGRAMMING_LANGUAGES = [
   { value: "rust", label: "Rust", template: "fn main() {\n    // Your Rust solution here\n}" },
 ];
 
+// Component for embedded visualizer preview
+const EmbeddedVisualizer = ({ fileId, title, height = "300px", onError }: {
+  fileId: string;
+  title: string;
+  height?: string;
+  onError?: (error: Error) => void;
+}) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLoad = () => {
+    setIsLoading(false);
+  };
+
+  const handleError = () => {
+    const errorMsg = "Failed to load visualizer";
+    setError(errorMsg);
+    setIsLoading(false);
+    onError?.(new Error(errorMsg));
+  };
+
+  return (
+    <div className="relative" style={{ height }}>
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
+            <p className="mt-2 text-sm text-gray-600">Loading visualizer...</p>
+          </div>
+        </div>
+      )}
+      
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+          <div className="text-center text-red-600">
+            <ExclamationTriangleIcon className="h-8 w-8 mx-auto mb-2" />
+            <p className="text-sm">{error}</p>
+          </div>
+        </div>
+      )}
+
+      <iframe
+        src={solutionApiService.getVisualizerFileUrl(fileId)}
+        title={title}
+        className="w-full h-full border-0"
+        onLoad={handleLoad}
+        onError={handleError}
+        sandbox="allow-scripts allow-same-origin"
+      />
+    </div>
+  );
+};
+
 export function SolutionRichTextEditor({
   textContent,
   onTextContentChange,
@@ -111,7 +164,7 @@ export function SolutionRichTextEditor({
   const deleteVisualizerMutation = useDeleteVisualizerFile();
   const { data: visualizerFiles, refetch: refetchVisualizers } = useVisualizerFilesBySolution(solutionId || '');
 
-  // Handle file upload for images
+  // Handle file upload for images - FIXED: Properly maintain image list
   const handleImageUpload = useCallback(
     async (files: FileList | File[]) => {
       const fileArray = Array.from(files);
@@ -124,12 +177,13 @@ export function SolutionRichTextEditor({
         return;
       }
 
-      const currentImageCount = uploadedImages.filter(
+      // FIXED: Count only valid uploaded images
+      const currentValidImages = uploadedImages.filter(
         (url) => url && url.trim() !== ""
-      ).length;
+      );
       const maxImages = fileConfig?.images?.maxPerSolution || 10;
 
-      if (currentImageCount + imageFiles.length > maxImages) {
+      if (currentValidImages.length + imageFiles.length > maxImages) {
         toast.error(`Maximum ${maxImages} images allowed per solution`);
         return;
       }
@@ -145,11 +199,11 @@ export function SolutionRichTextEditor({
           }
         }
 
-        const filteredExistingImages = uploadedImages.filter(
-          (url) => url && url.trim() !== ""
-        );
-        const updatedImages = [...filteredExistingImages, ...newImageUrls];
+        // FIXED: Properly merge existing and new images without filtering
+        const updatedImages = [...uploadedImages, ...newImageUrls];
         onImagesChange?.(updatedImages);
+        
+        // Automatically show image preview after upload
         setShowImagePreview(true);
 
         toast.success(
@@ -296,13 +350,13 @@ export function SolutionRichTextEditor({
     [textContent, onTextContentChange]
   );
 
-  // Remove image from list and from text content
+  // Remove image from list and from text content - FIXED: Proper regex escaping
   const removeImage = useCallback(
     (imageUrl: string) => {
       const updatedImages = uploadedImages.filter((url) => url !== imageUrl);
       onImagesChange?.(updatedImages);
 
-      // Fixed regex escaping - replaced broken escape sequence
+      // FIXED: Properly escape special regex characters
       const escapedUrl = imageUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const imageMarkdownPattern = new RegExp(
         `!\\[.*?\\]\\(${escapedUrl}\\)`,
@@ -317,11 +371,11 @@ export function SolutionRichTextEditor({
     [uploadedImages, onImagesChange, textContent, onTextContentChange]
   );
 
-  // Check if image is used in content
+  // Check if image is used in content - FIXED: Proper regex escaping
   const isImageUsedInContent = useCallback(
     (imageUrl: string): boolean => {
       if (!imageUrl || !textContent) return false;
-      // Fixed regex escaping - replaced broken escape sequence
+      // FIXED: Properly escape special regex characters
       const escapedUrl = imageUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const imageRegex = new RegExp(`!\\[.*?\\]\\(${escapedUrl}\\)`, "g");
       return imageRegex.test(textContent);
@@ -403,8 +457,14 @@ export function SolutionRichTextEditor({
     (language: string) => {
       const selectedLanguage = PROGRAMMING_LANGUAGES.find((lang) => lang.value === language);
       if (selectedLanguage && codeSnippet) {
+        // Only update template if current code is empty or matches a template
+        const shouldUpdateTemplate = !codeSnippet.code.trim() || 
+          PROGRAMMING_LANGUAGES.some(lang => lang.template === codeSnippet.code);
+        
         updateCodeSnippet('language', language);
-        updateCodeSnippet('code', selectedLanguage.template);
+        if (shouldUpdateTemplate) {
+          updateCodeSnippet('code', selectedLanguage.template);
+        }
         updateCodeSnippet('description', `${selectedLanguage.label} solution code`);
       }
     },
@@ -419,8 +479,10 @@ export function SolutionRichTextEditor({
         const updatedFileIds = visualizerFileIds.filter(id => id !== fileId);
         onVisualizerFileIdsChange?.(updatedFileIds);
         refetchVisualizers();
+        toast.success("Visualizer removed successfully");
       } catch (error) {
         console.error("Failed to remove visualizer:", error);
+        toast.error("Failed to remove visualizer");
       }
     },
     [visualizerFileIds, onVisualizerFileIdsChange, deleteVisualizerMutation, refetchVisualizers]
@@ -920,41 +982,51 @@ export function SolutionRichTextEditor({
                   Uploaded Visualizers ({visualizerFiles.data.length}/2)
                 </h4>
                 {visualizerFiles.data.map((file) => (
-                  <div
-                    key={file.fileId}
-                    className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <CubeTransparentIcon className="h-6 w-6 text-blue-600" />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {file.originalFileName || file.filename}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {(file.size / 1024).toFixed(1)} KB • Uploaded {new Date(file.uploadDate).toLocaleDateString()}
+                  <div key={file.fileId}>
+                    {/* File Info */}
+                    <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-t-lg">
+                      <div className="flex items-center space-x-3">
+                        <CubeTransparentIcon className="h-6 w-6 text-blue-600" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {file.originalFileName || file.filename}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {(file.size / 1024).toFixed(1)} KB • Uploaded {new Date(file.uploadDate).toLocaleDateString()}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <a
+                          href={solutionApiService.getVisualizerFileUrl(file.fileId)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                          title="Open visualizer in new tab"
+                        >
+                          <EyeIcon className="h-3 w-3 mr-1" />
+                          Open
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVisualizerFile(file.fileId)}
+                          className="inline-flex items-center px-2 py-1 border border-red-300 rounded text-xs font-medium text-red-700 bg-white hover:bg-red-50"
+                          title="Delete visualizer"
+                        >
+                          <TrashIcon className="h-3 w-3 mr-1" />
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <a
-                        href={solutionApiService.getVisualizerFileUrl(file.fileId)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
-                        title="Preview visualizer"
-                      >
-                        <EyeIcon className="h-3 w-3 mr-1" />
-                        Preview
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveVisualizerFile(file.fileId)}
-                        className="inline-flex items-center px-2 py-1 border border-red-300 rounded text-xs font-medium text-red-700 bg-white hover:bg-red-50"
-                        title="Delete visualizer"
-                      >
-                        <TrashIcon className="h-3 w-3 mr-1" />
-                        Delete
-                      </button>
+                    
+                    {/* Embedded Preview */}
+                    <div className="border-t-0 border border-gray-200 rounded-b-lg overflow-hidden">
+                      <EmbeddedVisualizer
+                        fileId={file.fileId}
+                        title={file.originalFileName || 'Algorithm Visualizer'}
+                        height="300px"
+                        onError={(error) => console.error('Visualizer error:', error)}
+                      />
                     </div>
                   </div>
                 ))}
