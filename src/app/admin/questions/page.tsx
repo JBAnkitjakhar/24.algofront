@@ -1,30 +1,36 @@
 // src/app/admin/questions/page.tsx - Questions management page
 
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
-import { 
-  QuestionMarkCircleIcon, 
-  PlusIcon, 
-  PencilIcon, 
+import { useState, useMemo } from "react";
+import {
+  QuestionMarkCircleIcon,
+  PlusIcon,
+  PencilIcon,
   TrashIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
   EyeIcon,
   CalendarIcon,
-  TagIcon
-} from '@heroicons/react/24/outline';
-import AdminLayout from '@/components/admin/AdminLayout';
-import { useQuestions, useQuestionStats } from '@/hooks/useQuestionManagement';
-import { useCategories } from '@/hooks/useCategoryManagement';
-import { CreateQuestionModal, EditQuestionModal, DeleteQuestionModal } from '@/components/admin/QuestionModals';
-import { useAuth } from '@/hooks/useAuth';
-import { dateUtils } from '@/lib/utils/common';
-import { 
-  QUESTION_LEVEL_LABELS, 
-  QUESTION_LEVEL_COLORS 
-} from '@/constants';
-import type { Question, QuestionLevel, QuestionFilters, Category } from '@/types';
+  TagIcon,
+} from "@heroicons/react/24/outline";
+import AdminLayout from "@/components/admin/AdminLayout";
+import { useQuestions, useQuestionStats } from "@/hooks/useQuestionManagement";
+import { useCategories } from "@/hooks/useCategoryManagement";
+import {
+  CreateQuestionModal,
+  EditQuestionModal,
+  DeleteQuestionModal,
+} from "@/components/admin/QuestionModals";
+import { useAuth } from "@/hooks/useAuth";
+import { dateUtils } from "@/lib/utils/common";
+import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from "@/constants";
+import type {
+  Question,
+  QuestionLevel,
+  QuestionFilters,
+  Category,
+} from "@/types";
 
 function QuestionCard({ question }: { question: Question }) {
   const [showEditModal, setShowEditModal] = useState(false);
@@ -44,7 +50,9 @@ function QuestionCard({ question }: { question: Question }) {
                 {question.title}
               </h3>
               <div className="mt-2 flex items-center space-x-2">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${levelColors.bg} ${levelColors.text}`}>
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${levelColors.bg} ${levelColors.text}`}
+                >
                   {QUESTION_LEVEL_LABELS[question.level]}
                 </span>
                 <div className="flex items-center text-sm text-gray-500">
@@ -77,27 +85,41 @@ function QuestionCard({ question }: { question: Question }) {
           {/* Content Preview */}
           <div className="mt-4">
             <p className="text-sm text-gray-600 line-clamp-3">
-              {question.statement.replace(/!\[.*?\]\(.*?\)/g, '[Image]').substring(0, 200)}
-              {question.statement.length > 200 ? '...' : ''}
+              {question.statement
+                .replace(/!\[.*?\]\(.*?\)/g, "[Image]")
+                .substring(0, 200)}
+              {question.statement.length > 200 ? "..." : ""}
             </p>
           </div>
 
-          {/* Images indicator */}
-          <div className="flex items-center gap-4 text-sm"> 
-          {question.imageUrls && question.imageUrls.length > 0 && (
-            <div className="mt-3 flex items-center text-sm text-blue-600">
-              <EyeIcon className="h-4 w-4 mr-1" />
-              {question.imageUrls.length} image{question.imageUrls.length !== 1 ? 's' : ''}
-            </div>
-          )}
+          {/* Images and Code snippets indicators */}
+          <div className="mt-3 flex items-center gap-4 text-sm">
+            {question.imageUrls && question.imageUrls.length > 0 && (
+              <div className="flex items-center text-blue-600">
+                <EyeIcon className="h-4 w-4 mr-1" />
+                {question.imageUrls.length} image
+                {question.imageUrls.length !== 1 ? "s" : ""}
+              </div>
+            )}
 
-          {/* Code snippets indicator */}
+            {/* Code snippets indicator */}
             {question.codeSnippets && question.codeSnippets.length > 0 && (
               <div className="flex items-center text-green-600">
-                <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                <svg
+                  className="h-4 w-4 mr-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                  />
                 </svg>
-                {question.codeSnippets.length} template{question.codeSnippets.length !== 1 ? 's' : ''}
+                {question.codeSnippets.length} template
+                {question.codeSnippets.length !== 1 ? "s" : ""}
               </div>
             )}
           </div>
@@ -136,7 +158,11 @@ function QuestionCard({ question }: { question: Question }) {
   );
 }
 
-function FilterBar({ filters, onFiltersChange, categories }: {
+function FilterBar({
+  filters,
+  onFiltersChange,
+  categories,
+}: {
   filters: QuestionFilters;
   onFiltersChange: (filters: QuestionFilters) => void;
   categories: Category[];
@@ -147,7 +173,7 @@ function FilterBar({ filters, onFiltersChange, categories }: {
         <FunnelIcon className="h-5 w-5 text-gray-400" />
         <h3 className="text-sm font-medium text-gray-900">Filters</h3>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Search */}
         <div className="relative">
@@ -155,20 +181,27 @@ function FilterBar({ filters, onFiltersChange, categories }: {
           <input
             type="text"
             placeholder="Search questions..."
-            value={filters.search || ''}
-            onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
+            value={filters.search || ""}
+            onChange={(e) =>
+              onFiltersChange({ ...filters, search: e.target.value })
+            }
             className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           />
         </div>
 
         {/* Category Filter */}
         <select
-          value={filters.categoryId || ''}
-          onChange={(e) => onFiltersChange({ ...filters, categoryId: e.target.value || undefined })}
+          value={filters.categoryId || ""}
+          onChange={(e) =>
+            onFiltersChange({
+              ...filters,
+              categoryId: e.target.value || undefined,
+            })
+          }
           className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         >
           <option value="">All Categories</option>
-          {categories.map(category => (
+          {categories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}
             </option>
@@ -177,8 +210,13 @@ function FilterBar({ filters, onFiltersChange, categories }: {
 
         {/* Level Filter */}
         <select
-          value={filters.level || ''}
-          onChange={(e) => onFiltersChange({ ...filters, level: e.target.value as QuestionLevel || undefined })}
+          value={filters.level || ""}
+          onChange={(e) =>
+            onFiltersChange({
+              ...filters,
+              level: (e.target.value as QuestionLevel) || undefined,
+            })
+          }
           className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         >
           <option value="">All Levels</option>
@@ -203,7 +241,11 @@ function FilterBar({ filters, onFiltersChange, categories }: {
   );
 }
 
-function QuestionsGrid({ questions, isLoading, error }: {
+function QuestionsGrid({
+  questions,
+  isLoading,
+  error,
+}: {
   questions: Question[];
   isLoading: boolean;
   error: Error | null;
@@ -213,9 +255,11 @@ function QuestionsGrid({ questions, isLoading, error }: {
       <div className="bg-red-50 border border-red-200 rounded-md p-4">
         <div className="flex">
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-red-800">Error loading questions</h3>
+            <h3 className="text-sm font-medium text-red-800">
+              Error loading questions
+            </h3>
             <div className="mt-2 text-sm text-red-700">
-              {error.message || 'Something went wrong. Please try again.'}
+              {error.message || "Something went wrong. Please try again."}
             </div>
           </div>
         </div>
@@ -263,7 +307,9 @@ function QuestionsGrid({ questions, isLoading, error }: {
     return (
       <div className="text-center py-12">
         <QuestionMarkCircleIcon className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900">No questions found</h3>
+        <h3 className="mt-2 text-sm font-medium text-gray-900">
+          No questions found
+        </h3>
         <p className="mt-1 text-sm text-gray-500">
           Get started by creating your first question.
         </p>
@@ -287,15 +333,22 @@ export default function AdminQuestionsPage() {
   const pageSize = 20;
 
   // Convert filters for API call
-  const apiParams = useMemo(() => ({
-    page,
-    size: pageSize,
-    categoryId: filters.categoryId,
-    level: filters.level,
-    search: filters.search
-  }), [page, filters]);
+  const apiParams = useMemo(
+    () => ({
+      page,
+      size: pageSize,
+      categoryId: filters.categoryId,
+      level: filters.level,
+      search: filters.search,
+    }),
+    [page, filters]
+  );
 
-  const { data: questionsData, isLoading: questionsLoading, error: questionsError } = useQuestions(apiParams);
+  const {
+    data: questionsData,
+    isLoading: questionsLoading,
+    error: questionsError,
+  } = useQuestions(apiParams);
   const { data: categories = [] } = useCategories();
   const { data: stats } = useQuestionStats();
   const { isAdmin } = useAuth();
@@ -313,7 +366,8 @@ export default function AdminQuestionsPage() {
               Questions Management
             </h2>
             <p className="mt-1 text-sm text-gray-500">
-              Create and manage coding questions with rich text editor and image support.
+              Create and manage coding questions with rich text editor and image
+              support.
             </p>
           </div>
           {isAdmin() && (
@@ -341,8 +395,12 @@ export default function AdminQuestionsPage() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Total Questions</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.total}</dd>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Total Questions
+                      </dt>
+                      <dd className="text-lg font-medium text-gray-900">
+                        {stats.total}
+                      </dd>
                     </dl>
                   </div>
                 </div>
@@ -354,13 +412,19 @@ export default function AdminQuestionsPage() {
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <div className="h-8 w-8 bg-green-100 rounded flex items-center justify-center">
-                      <span className="text-green-600 text-sm font-bold">E</span>
+                      <span className="text-green-600 text-sm font-bold">
+                        E
+                      </span>
                     </div>
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Easy</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.byLevel.easy}</dd>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Easy
+                      </dt>
+                      <dd className="text-lg font-medium text-gray-900">
+                        {stats.byLevel.easy}
+                      </dd>
                     </dl>
                   </div>
                 </div>
@@ -372,13 +436,19 @@ export default function AdminQuestionsPage() {
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <div className="h-8 w-8 bg-yellow-100 rounded flex items-center justify-center">
-                      <span className="text-yellow-600 text-sm font-bold">M</span>
+                      <span className="text-yellow-600 text-sm font-bold">
+                        M
+                      </span>
                     </div>
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Medium</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.byLevel.medium}</dd>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Medium
+                      </dt>
+                      <dd className="text-lg font-medium text-gray-900">
+                        {stats.byLevel.medium}
+                      </dd>
                     </dl>
                   </div>
                 </div>
@@ -395,8 +465,12 @@ export default function AdminQuestionsPage() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Hard</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.byLevel.hard}</dd>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Hard
+                      </dt>
+                      <dd className="text-lg font-medium text-gray-900">
+                        {stats.byLevel.hard}
+                      </dd>
                     </dl>
                   </div>
                 </div>
@@ -407,17 +481,17 @@ export default function AdminQuestionsPage() {
 
         {/* Filters */}
         <div className="mt-8">
-          <FilterBar 
-            filters={filters} 
-            onFiltersChange={setFilters} 
+          <FilterBar
+            filters={filters}
+            onFiltersChange={setFilters}
             categories={categories}
           />
         </div>
 
         {/* Questions Grid */}
         <div className="mt-8">
-          <QuestionsGrid 
-            questions={questions} 
+          <QuestionsGrid
+            questions={questions}
             isLoading={questionsLoading}
             error={questionsError}
           />
@@ -445,41 +519,58 @@ export default function AdminQuestionsPage() {
             <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-gray-700">
-                  Showing{' '}
-                  <span className="font-medium">{page * pageSize + 1}</span>
-                  {' '}to{' '}
+                  Showing{" "}
+                  <span className="font-medium">{page * pageSize + 1}</span> to{" "}
                   <span className="font-medium">
-                    {Math.min((page + 1) * pageSize, questionsData?.totalElements || 0)}
-                  </span>
-                  {' '}of{' '}
-                  <span className="font-medium">{questionsData?.totalElements || 0}</span>
-                  {' '}results
+                    {Math.min(
+                      (page + 1) * pageSize,
+                      questionsData?.totalElements || 0
+                    )}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-medium">
+                    {questionsData?.totalElements || 0}
+                  </span>{" "}
+                  results
                 </p>
               </div>
               <div>
-                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                <nav
+                  className="isolate inline-flex -space-x-px rounded-md shadow-sm"
+                  aria-label="Pagination"
+                >
                   <button
                     onClick={() => setPage(Math.max(0, page - 1))}
                     disabled={page === 0}
                     className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Previous</span>
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </button>
-                  
+
                   {/* Page numbers */}
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNum = Math.max(0, Math.min(totalPages - 5, page - 2)) + i;
+                    const pageNum =
+                      Math.max(0, Math.min(totalPages - 5, page - 2)) + i;
                     return (
                       <button
                         key={pageNum}
                         onClick={() => setPage(pageNum)}
                         className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
                           pageNum === page
-                            ? 'z-10 bg-blue-600 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
-                            : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0'
+                            ? "z-10 bg-blue-600 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                            : "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
                         }`}
                       >
                         {pageNum + 1}
@@ -493,8 +584,17 @@ export default function AdminQuestionsPage() {
                     className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Next</span>
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </button>
                 </nav>
