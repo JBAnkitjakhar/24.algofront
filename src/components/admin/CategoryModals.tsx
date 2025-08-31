@@ -3,7 +3,7 @@
 'use client';
 
 import { Fragment, useState } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
+import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
 import { 
   XMarkIcon, 
   ExclamationTriangleIcon,
@@ -78,7 +78,7 @@ export function CreateCategoryModal({ isOpen, onClose }: CreateCategoryModalProp
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={handleClose}>
-        <Transition.Child
+        <TransitionChild
           as={Fragment}
           enter="ease-out duration-300"
           enterFrom="opacity-0"
@@ -88,11 +88,11 @@ export function CreateCategoryModal({ isOpen, onClose }: CreateCategoryModalProp
           leaveTo="opacity-0"
         >
           <div className="fixed inset-0 bg-black/25" />
-        </Transition.Child>
+        </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child
+            <TransitionChild
               as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
@@ -101,15 +101,15 @@ export function CreateCategoryModal({ isOpen, onClose }: CreateCategoryModalProp
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <DialogPanel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <div className="flex items-center justify-between">
-                  <Dialog.Title
+                  <DialogTitle
                     as="h3"
                     className="text-lg font-medium leading-6 text-gray-900 flex items-center"
                   >
                     <PlusIcon className="h-5 w-5 mr-2 text-blue-600" />
                     Create New Category
-                  </Dialog.Title>
+                  </DialogTitle>
                   <button
                     type="button"
                     className="rounded-md text-gray-400 hover:text-gray-600"
@@ -166,8 +166,8 @@ export function CreateCategoryModal({ isOpen, onClose }: CreateCategoryModalProp
                     </button>
                   </div>
                 </form>
-              </Dialog.Panel>
-            </Transition.Child>
+              </DialogPanel>
+            </TransitionChild>
           </div>
         </div>
       </Dialog>
@@ -239,7 +239,7 @@ export function EditCategoryModal({ isOpen, onClose, category }: EditCategoryMod
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={handleClose}>
-        <Transition.Child
+        <TransitionChild
           as={Fragment}
           enter="ease-out duration-300"
           enterFrom="opacity-0"
@@ -249,11 +249,11 @@ export function EditCategoryModal({ isOpen, onClose, category }: EditCategoryMod
           leaveTo="opacity-0"
         >
           <div className="fixed inset-0 bg-black/25" />
-        </Transition.Child>
+        </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child
+            <TransitionChild
               as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
@@ -262,15 +262,15 @@ export function EditCategoryModal({ isOpen, onClose, category }: EditCategoryMod
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <DialogPanel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <div className="flex items-center justify-between">
-                  <Dialog.Title
+                  <DialogTitle
                     as="h3"
                     className="text-lg font-medium leading-6 text-gray-900 flex items-center"
                   >
                     <PencilIcon className="h-5 w-5 mr-2 text-blue-600" />
                     Edit Category
-                  </Dialog.Title>
+                  </DialogTitle>
                   <button
                     type="button"
                     className="rounded-md text-gray-400 hover:text-gray-600"
@@ -327,8 +327,8 @@ export function EditCategoryModal({ isOpen, onClose, category }: EditCategoryMod
                     </button>
                   </div>
                 </form>
-              </Dialog.Panel>
-            </Transition.Child>
+              </DialogPanel>
+            </TransitionChild>
           </div>
         </div>
       </Dialog>
@@ -357,7 +357,7 @@ export function DeleteCategoryModal({ isOpen, onClose, category }: DeleteCategor
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
-        <Transition.Child
+        <TransitionChild
           as={Fragment}
           enter="ease-out duration-300"
           enterFrom="opacity-0"
@@ -367,11 +367,11 @@ export function DeleteCategoryModal({ isOpen, onClose, category }: DeleteCategor
           leaveTo="opacity-0"
         >
           <div className="fixed inset-0 bg-black/25" />
-        </Transition.Child>
+        </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child
+            <TransitionChild
               as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
@@ -380,7 +380,7 @@ export function DeleteCategoryModal({ isOpen, onClose, category }: DeleteCategor
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <DialogPanel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <div className="flex items-center">
                   <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
                     <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
@@ -388,9 +388,9 @@ export function DeleteCategoryModal({ isOpen, onClose, category }: DeleteCategor
                 </div>
                 
                 <div className="mt-3 text-center">
-                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
+                  <DialogTitle as="h3" className="text-lg font-medium leading-6 text-gray-900">
                     Delete Category
-                  </Dialog.Title>
+                  </DialogTitle>
                   
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
@@ -443,8 +443,8 @@ export function DeleteCategoryModal({ isOpen, onClose, category }: DeleteCategor
                     {deleteCategoryMutation.isPending ? 'Deleting...' : 'Delete Category'}
                   </button>
                 </div>
-              </Dialog.Panel>
-            </Transition.Child>
+              </DialogPanel>
+            </TransitionChild>
           </div>
         </div>
       </Dialog>
