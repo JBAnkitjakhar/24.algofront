@@ -158,24 +158,38 @@ const EmbeddedVisualizer = ({
   title: string;
   height?: string;
   onError?: (error: Error) => void;
-  onFileNotFound?: (fileId: string) => void; // NEW: Callback for file deletion
+  onFileNotFound?: (fileId: string) => void;
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [htmlContent, setHtmlContent] = useState<string>("");
 
+  // FIXED: Memoize callbacks to prevent dependency issues
+  const handleError = useCallback((err: Error) => {
+    onError?.(err);
+  }, [onError]);
+
+  const handleFileNotFound = useCallback((id: string) => {
+    onFileNotFound?.(id);
+  }, [onFileNotFound]);
+
   // FIXED: Enhanced fetch with proper error handling for deleted files
   useEffect(() => {
+    let isMounted = true; // Track if component is still mounted
+
     const fetchVisualizerContent = async () => {
+      // Don't fetch if already has error indicating deletion
+      if (error === "File has been deleted") {
+        return;
+      }
+
       try {
         setIsLoading(true);
         setError(null);
 
         const token = cookieManager.getToken();
         if (!token) {
-          throw new Error(
-            "Authentication token not found. Please log in again."
-          );
+          throw new Error("Authentication token not found. Please log in again.");
         }
 
         const apiBaseUrl =
@@ -192,19 +206,20 @@ const EmbeddedVisualizer = ({
           credentials: "include",
         });
 
+        // Only update state if component is still mounted
+        if (!isMounted) return;
+
         if (!response.ok) {
           // FIXED: Handle 404 gracefully for deleted files
           if (response.status === 404) {
             // Notify parent component that file was not found (likely deleted)
-            onFileNotFound?.(fileId);
+            handleFileNotFound(fileId);
             setError("File has been deleted");
             return; // Don't call onError for expected 404s
           }
 
           if (response.status === 401) {
-            throw new Error(
-              "Authentication expired. Please refresh the page and try again."
-            );
+            throw new Error("Authentication expired. Please refresh the page and try again.");
           }
           throw new Error(`Failed to load visualizer: ${response.status}`);
         }
@@ -215,24 +230,34 @@ const EmbeddedVisualizer = ({
           throw new Error("Empty response received from server");
         }
 
-        setHtmlContent(htmlText);
+        if (isMounted) {
+          setHtmlContent(htmlText);
+        }
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to load visualizer";
+        if (!isMounted) return;
+        
+        const errorMessage = err instanceof Error ? err.message : "Failed to load visualizer";
         setError(errorMessage);
         // FIXED: Only call onError for unexpected errors, not 404s
         if (!(err instanceof Error && err.message.includes("404"))) {
-          onError?.(new Error(errorMessage));
+          handleError(new Error(errorMessage));
         }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     if (fileId) {
       fetchVisualizerContent();
     }
-  }, [fileId, onError, onFileNotFound]);
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [fileId, error, handleError, handleFileNotFound]); // FIXED: Complete dependency array
 
   // Create blob URL for secure HTML rendering
   const createBlobUrl = useCallback((content: string) => {
@@ -273,10 +298,7 @@ const EmbeddedVisualizer = ({
 
   if (isLoading) {
     return (
-      <div
-        className="border border-gray-200 rounded-lg p-4 bg-gray-50"
-        style={{ height }}
-      >
+      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50" style={{ height }}>
         <div className="flex items-center justify-center h-full">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <span className="ml-3 text-gray-600">Loading visualizer...</span>
@@ -286,10 +308,7 @@ const EmbeddedVisualizer = ({
   }
 
   return (
-    <div
-      className="relative border border-gray-200 rounded-lg overflow-hidden"
-      style={{ height }}
-    >
+    <div className="relative border border-gray-200 rounded-lg overflow-hidden" style={{ height }}>
       {htmlContent && (
         <iframe
           src={createBlobUrl(htmlContent)}
@@ -403,64 +422,64 @@ export function SolutionRichTextEditor({
 
   // Handle HTML visualizer file upload
   const handleVisualizerUpload = useCallback(
-  async (files: FileList | File[]) => {
-    if (!solutionId) {
-      toast.error("Solution must be saved before uploading visualizers");
-      return;
-    }
-
-    const fileArray = Array.from(files);
-    const htmlFiles = fileArray.filter((file) =>
-      file.name.toLowerCase().endsWith(".html")
-    );
-
-    if (htmlFiles.length === 0) {
-      toast.error("Please select valid HTML files");
-      return;
-    }
-
-    const currentVisualizerCount = visualizerFileIds.length;
-    const maxVisualizers = 2;
-
-    if (currentVisualizerCount + htmlFiles.length > maxVisualizers) {
-      toast.error(
-        `Maximum ${maxVisualizers} HTML visualizers allowed per solution`
-      );
-      return;
-    }
-
-    try {
-      const newFileIds: string[] = [];
-      // Process files sequentially - individual success toasts handled by hook
-      for (const file of htmlFiles) {
-        const result = await uploadVisualizerMutation.mutateAsync({
-          solutionId,
-          file,
-        });
-        if (result.fileId) {
-          newFileIds.push(result.fileId);
-        }
+    async (files: FileList | File[]) => {
+      if (!solutionId) {
+        toast.error("Solution must be saved before uploading visualizers");
+        return;
       }
 
-      const updatedFileIds = [...visualizerFileIds, ...newFileIds];
-      onVisualizerFileIdsChange?.(updatedFileIds);
-      refetchVisualizers();
+      const fileArray = Array.from(files);
+      const htmlFiles = fileArray.filter((file) =>
+        file.name.toLowerCase().endsWith(".html")
+      );
 
-      // REMOVED: Duplicate toast - individual success messages are shown in hook
-      console.log(`Successfully uploaded ${newFileIds.length} visualizer(s)`);
-    } catch (error) {
-      console.error("Visualizer upload failed:", error);
-      // Error toast is handled in the mutation hook
-    }
-  },
-  [
-    solutionId,
-    visualizerFileIds,
-    onVisualizerFileIdsChange,
-    uploadVisualizerMutation,
-    refetchVisualizers,
-  ]
-);
+      if (htmlFiles.length === 0) {
+        toast.error("Please select valid HTML files");
+        return;
+      }
+
+      const currentVisualizerCount = visualizerFileIds.length;
+      const maxVisualizers = 2;
+
+      if (currentVisualizerCount + htmlFiles.length > maxVisualizers) {
+        toast.error(
+          `Maximum ${maxVisualizers} HTML visualizers allowed per solution`
+        );
+        return;
+      }
+
+      try {
+        const newFileIds: string[] = [];
+        // Process files sequentially - individual success toasts handled by hook
+        for (const file of htmlFiles) {
+          const result = await uploadVisualizerMutation.mutateAsync({
+            solutionId,
+            file,
+          });
+          if (result.fileId) {
+            newFileIds.push(result.fileId);
+          }
+        }
+
+        const updatedFileIds = [...visualizerFileIds, ...newFileIds];
+        onVisualizerFileIdsChange?.(updatedFileIds);
+        refetchVisualizers();
+
+        // REMOVED: Duplicate toast - individual success messages are shown in hook
+        // console.log(`Successfully uploaded ${newFileIds.length} visualizer(s)`);
+      } catch (error) {
+        console.error("Visualizer upload failed:", error);
+        // Error toast is handled in the mutation hook
+      }
+    },
+    [
+      solutionId,
+      visualizerFileIds,
+      onVisualizerFileIdsChange,
+      uploadVisualizerMutation,
+      refetchVisualizers,
+    ]
+  );
 
   // Handle drag and drop
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -673,40 +692,37 @@ export function SolutionRichTextEditor({
 
   // Remove visualizer file
   const handleRemoveVisualizerFile = useCallback(
-  async (fileId: string, fileName: string) => {
+  async (fileId: string) => {
     try {
-      await deleteVisualizerMutation.mutateAsync(fileId);
+      // First update the UI immediately to prevent fetching
       const updatedFileIds = visualizerFileIds.filter((id) => id !== fileId);
       onVisualizerFileIdsChange?.(updatedFileIds);
+      
+      // Then delete from server
+      await deleteVisualizerMutation.mutateAsync(fileId);
+      
+      // Finally refetch to get fresh data
       refetchVisualizers();
-
-      // REMOVED: Duplicate toast - success message is shown in hook
-      console.log(`Successfully removed visualizer: ${fileName}`);
+      // console.log(`Successfully removed visualizer: ${fileName}`);
     } catch (error) {
       console.error("Failed to remove visualizer:", error);
-      // Error toast is handled in the mutation hook
+      // Revert the UI change if deletion failed
+      onVisualizerFileIdsChange?.(visualizerFileIds);
     }
   },
-  [
-    visualizerFileIds,
-    onVisualizerFileIdsChange,
-    deleteVisualizerMutation,
-    refetchVisualizers,
-  ]
+  [visualizerFileIds, onVisualizerFileIdsChange, deleteVisualizerMutation, refetchVisualizers]
 );
 
   const handleVisualizerFileNotFound = useCallback(
   (fileId: string) => {
-    // Silently remove the deleted file ID from the list
+    // Immediately remove the deleted file ID from the list to prevent future fetches
     const updatedFileIds = visualizerFileIds.filter((id) => id !== fileId);
     if (updatedFileIds.length !== visualizerFileIds.length) {
       onVisualizerFileIdsChange?.(updatedFileIds);
-      refetchVisualizers();
-      // Don't show any notification - file was already deleted on server
-      console.log(`Cleaned up deleted visualizer file ID: ${fileId}`);
+      // console.log(`Removed deleted visualizer file ID from list: ${fileId}`);
     }
   },
-  [visualizerFileIds, onVisualizerFileIdsChange, refetchVisualizers]
+  [visualizerFileIds, onVisualizerFileIdsChange] // Removed refetchVisualizers dependency
 );
 
   // FIXED: Separate unused and used images properly
@@ -1316,8 +1332,7 @@ export function SolutionRichTextEditor({
                           type="button"
                           onClick={() =>
                             handleRemoveVisualizerFile(
-                              file.fileId,
-                              file.originalFileName || "Visualizer"
+                              file.fileId
                             )
                           }
                           className="inline-flex items-center px-2 py-1 border border-red-300 rounded text-xs font-medium text-red-700 bg-white hover:bg-red-50"

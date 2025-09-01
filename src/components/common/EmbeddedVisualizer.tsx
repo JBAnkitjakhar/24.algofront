@@ -1,4 +1,4 @@
-// src/components/common/EmbeddedVisualizer.tsx - ENHANCED for Interactive HTML
+// src/components/common/EmbeddedVisualizer.tsx - FIXED VERSION with proper dependencies
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
@@ -50,12 +50,13 @@ export function EmbeddedVisualizer({
   const [htmlContent, setHtmlContent] = useState<string>("");
   const [retryCount, setRetryCount] = useState(0);
   const [isInteractive, setIsInteractive] = useState(false);
+  const [fetchAttempted, setFetchAttempted] = useState(false); // FIXED: Add fetch tracking
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const blobUrlRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Professional error categorization
-  const categorizeError = (
+  const categorizeError = useCallback((
     status: number,
     message: string
   ): VisualizerError => {
@@ -65,8 +66,7 @@ export function EmbeddedVisualizer({
         return {
           type: "auth",
           message: "Authentication required",
-          details:
-            "Your session may have expired. Please refresh the page and try again.",
+          details: "Your session may have expired. Please refresh the page and try again.",
           recoverable: true,
         };
       case 404:
@@ -89,8 +89,7 @@ export function EmbeddedVisualizer({
         return {
           type: "network",
           message: "Server error",
-          details:
-            "The server is currently unavailable. Please try again later.",
+          details: "The server is currently unavailable. Please try again later.",
           recoverable: true,
         };
       default:
@@ -109,161 +108,179 @@ export function EmbeddedVisualizer({
           recoverable: true,
         };
     }
-  };
+  }, []);
 
-  // FIXED: Enhanced fetch with proper JWT authentication for visualizer access
+  // FIXED: Memoize callbacks to prevent unnecessary re-renders
+  const handleError = useCallback((errorMessage: string) => {
+    onError?.(errorMessage);
+  }, [onError]);
 
+  const handleFileNotFound = useCallback((id: string) => {
+    onFileNotFound?.(id);
+  }, [onFileNotFound]);
+
+  // FIXED: Enhanced fetch with proper dependency management
   useEffect(() => {
-  const fetchVisualizerContent = async () => {
-    // FIXED: Don't fetch if we already know the file was deleted
-    if (error && error.type === "notfound") {
-      return; // Skip fetch if we already know file is deleted
-    }
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    abortControllerRef.current = new AbortController();
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      if (!fileId || fileId.trim().length === 0) {
-        throw new Error("Invalid file identifier");
-      }
-
-      // CRITICAL: Get JWT token for authentication
-      const token = cookieManager.getToken();
-      if (!token) {
-        setError({
-          type: "auth",
-          message: "Authentication required",
-          details: "Please log in to view visualizer content.",
-          recoverable: true,
-        });
+    const fetchVisualizerContent = async () => {
+      // FIXED: Don't fetch if already attempted or file is known to be deleted
+      if (fetchAttempted || (error && error.type === "notfound")) {
         return;
       }
 
-      const apiBaseUrl =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
-      const url = `${apiBaseUrl}/files/visualizers/${fileId}`;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
 
-      console.log(`[Visualizer] Fetching: ${url} with JWT token`);
+      abortControllerRef.current = new AbortController();
+      setFetchAttempted(true);
 
-      // FIXED: Proper fetch with JWT authentication
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "text/html",
-          Authorization: `Bearer ${token}`, // CRITICAL: JWT token for authentication
-          "Cache-Control": "no-cache",
-        },
-        credentials: "include", // Include cookies for additional auth support
-        signal: abortControllerRef.current.signal,
-      });
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      console.log(
-        `[Visualizer] Response: ${response.status} ${response.statusText}`
-      );
-
-      if (!response.ok) {
-        const errorInfo = categorizeError(
-          response.status,
-          response.statusText
-        );
-        setError(errorInfo);
-
-        // FIXED: Call onFileNotFound for 404 errors to clean up the UI
-        if (response.status === 404 && onFileNotFound) {
-          onFileNotFound(fileId);
+        if (!fileId || fileId.trim().length === 0) {
+          throw new Error("Invalid file identifier");
         }
 
-        onError?.(errorInfo.message);
-        return;
-      }
+        // CRITICAL: Get JWT token for authentication
+        const token = cookieManager.getToken();
+        if (!token) {
+          setError({
+            type: "auth",
+            message: "Authentication required",
+            details: "Please log in to view visualizer content.",
+            recoverable: true,
+          });
+          return;
+        }
 
-      const contentType = response.headers.get("content-type");
-      if (contentType && !contentType.includes("text/html")) {
-        setError({
-          type: "content",
-          message: "Invalid file format",
-          details: `Expected HTML content, received ${contentType}`,
-          recoverable: false,
+        const apiBaseUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+        const url = `${apiBaseUrl}/files/visualizers/${fileId}`;
+
+        // console.log(`[Visualizer] Fetching: ${url} with JWT token`);
+
+        // FIXED: Proper fetch with JWT authentication
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            Accept: "text/html",
+            Authorization: `Bearer ${token}`,
+            "Cache-Control": "no-cache",
+          },
+          credentials: "include",
+          signal: abortControllerRef.current.signal,
         });
-        return;
+
+        // console.log(
+        //   `[Visualizer] Response: ${response.status} ${response.statusText}`
+        // );
+
+        if (!response.ok) {
+          const errorInfo = categorizeError(
+            response.status,
+            response.statusText
+          );
+          setError(errorInfo);
+
+          // FIXED: Call onFileNotFound for 404 errors to clean up the UI
+          if (response.status === 404) {
+            handleFileNotFound(fileId);
+          }
+
+          handleError(errorInfo.message);
+          return;
+        }
+
+        const contentType = response.headers.get("content-type");
+        if (contentType && !contentType.includes("text/html")) {
+          setError({
+            type: "content",
+            message: "Invalid file format",
+            details: `Expected HTML content, received ${contentType}`,
+            recoverable: false,
+          });
+          return;
+        }
+
+        const htmlText = await response.text();
+
+        if (!htmlText || htmlText.trim().length === 0) {
+          setError({
+            type: "content",
+            message: "Empty file",
+            details: "The visualizer file appears to be empty.",
+            recoverable: false,
+          });
+          return;
+        }
+
+        // Detect if content is interactive
+        const hasJavaScript =
+          htmlText.toLowerCase().includes("<script") ||
+          htmlText.toLowerCase().includes("javascript:");
+        setIsInteractive(hasJavaScript);
+
+        // Clean up previous blob URL
+        if (blobUrlRef.current) {
+          URL.revokeObjectURL(blobUrlRef.current);
+        }
+
+        setHtmlContent(htmlText);
+        setRetryCount(0);
+        // console.log(
+        //   `[Visualizer] Content loaded successfully (${htmlText.length} chars), Interactive: ${hasJavaScript}`
+        // );
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          // console.log("[Visualizer] Request aborted");
+          return;
+        }
+
+        console.error("[Visualizer] Fetch error:", err);
+
+        const errorInfo: VisualizerError = {
+          type: "network",
+          message: "Network error",
+          details: err instanceof Error ? err.message : "Failed to connect to server",
+          recoverable: true,
+        };
+
+        setError(errorInfo);
+        handleError(errorInfo.message);
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      const htmlText = await response.text();
+    // FIXED: Only fetch if fileId exists and we haven't already attempted or hit a permanent error
+    if (fileId) {
+      fetchVisualizerContent();
+    }
 
-      if (!htmlText || htmlText.trim().length === 0) {
-        setError({
-          type: "content",
-          message: "Empty file",
-          details: "The visualizer file appears to be empty.",
-          recoverable: false,
-        });
-        return;
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
-
-      // Detect if content is interactive
-      const hasJavaScript =
-        htmlText.toLowerCase().includes("<script") ||
-        htmlText.toLowerCase().includes("javascript:");
-      setIsInteractive(hasJavaScript);
-
-      // Clean up previous blob URL
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
       }
+    };
+  }, [fileId, fetchAttempted, error, categorizeError, handleError, handleFileNotFound]); // FIXED: Complete dependency array
 
-      setHtmlContent(htmlText);
-      setRetryCount(0);
-      console.log(
-        `[Visualizer] Content loaded successfully (${htmlText.length} chars), Interactive: ${hasJavaScript}`
-      );
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") {
-        console.log("[Visualizer] Request aborted");
-        return;
-      }
-
-      console.error("[Visualizer] Fetch error:", err);
-
-      const errorInfo: VisualizerError = {
-        type: "network",
-        message: "Network error",
-        details:
-          err instanceof Error ? err.message : "Failed to connect to server",
-        recoverable: true,
-      };
-
-      setError(errorInfo);
-      onError?.(errorInfo.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // FIXED: Only fetch if fileId exists and we don't have a permanent error
-  if (fileId && !(error && !error.recoverable)) {
-    fetchVisualizerContent();
-  }
-
-  return () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-    }
-  };
-}, [fileId, onError, onFileNotFound, retryCount, error]);
+  // FIXED: Reset fetch attempt when fileId changes
+  useEffect(() => {
+    setFetchAttempted(false);
+    setError(null);
+    setHtmlContent("");
+    setIsInteractive(false);
+  }, [fileId]);
 
   const handleRetry = useCallback(() => {
     if (retryCount < 3) {
       setRetryCount((prev) => prev + 1);
+      setFetchAttempted(false); // Reset to allow retry
+      setError(null);
     }
   }, [retryCount]);
 
@@ -281,7 +298,7 @@ export function EmbeddedVisualizer({
   }, []);
 
   // Enhanced error rendering
-  const renderError = (error: VisualizerError) => {
+  const renderError = useCallback((error: VisualizerError) => {
     const getErrorIcon = () => {
       switch (error.type) {
         case "notfound":
@@ -336,10 +353,10 @@ export function EmbeddedVisualizer({
         </div>
       </div>
     );
-  };
+  }, [retryCount, handleRetry, className]);
 
   // Handle iframe events with enhanced security
-  const handleIframeLoad = () => {
+  const handleIframeLoad = useCallback(() => {
     const iframe = iframeRef.current;
     if (iframe && iframe.contentWindow) {
       try {
@@ -347,7 +364,7 @@ export function EmbeddedVisualizer({
         const handleMessage = (event: MessageEvent) => {
           // Only accept messages from the iframe's origin
           if (event.source === iframe.contentWindow) {
-            console.log("[Visualizer] Message from iframe:", event.data);
+            // console.log("[Visualizer] Message from iframe:", event.data);
           }
         };
 
@@ -356,16 +373,14 @@ export function EmbeddedVisualizer({
         // Cleanup listener when component unmounts
         return () => window.removeEventListener("message", handleMessage);
       } catch (e) {
+        console.error(e);
         // Cross-origin access might be blocked, which is fine for security
-        console.log(e);
-        console.log(
-          "[Visualizer] Cross-origin iframe communication blocked (expected)"
-        );
+        // console.log("[Visualizer] Cross-origin iframe communication blocked (expected)");
       }
     }
-  };
+  }, []);
 
-  const handleIframeError = () => {
+  const handleIframeError = useCallback(() => {
     console.error("[Visualizer] Iframe failed to load");
     setError({
       type: "content",
@@ -373,7 +388,7 @@ export function EmbeddedVisualizer({
       details: "The visualizer content could not be displayed.",
       recoverable: true,
     });
-  };
+  }, []);
 
   if (error) {
     return renderError(error);

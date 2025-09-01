@@ -399,7 +399,6 @@ export function useDeleteVisualizerFile() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SOLUTIONS.LIST });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SOLUTIONS.STATS });
       
-      // FIXED: Show success toast with proper messaging
       toast.success('Visualizer removed successfully', {
         duration: 2000,
         icon: "🗑️",
