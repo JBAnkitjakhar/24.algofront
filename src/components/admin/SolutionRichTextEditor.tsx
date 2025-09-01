@@ -1,4 +1,4 @@
-// src/components/admin/SolutionRichTextEditor.tsx - FIXED VERSION
+// src/components/admin/SolutionRichTextEditor.tsx - UPDATED with CodeSyntaxHighlighter
 
 "use client";
 
@@ -19,6 +19,7 @@ import {
   CubeTransparentIcon,
 } from "@heroicons/react/24/outline";
 import { MarkdownRenderer } from "../common/MarkdownRenderer";
+import { CodeSyntaxHighlighter } from "../common/CodeSyntaxHighlighter"; // NEW IMPORT
 import {
   useUploadSolutionImage,
   useValidateYoutubeLink,
@@ -364,6 +365,7 @@ export function SolutionRichTextEditor({
   const deleteVisualizerMutation = useDeleteVisualizerFile();
   const { data: visualizerFiles, refetch: refetchVisualizers } =
     useVisualizerFilesBySolution(solutionId || "");
+
   // FIXED: Better image upload handling that preserves all images
   const handleImageUpload = useCallback(
     async (files: FileList | File[]) => {
@@ -692,38 +694,38 @@ export function SolutionRichTextEditor({
 
   // Remove visualizer file
   const handleRemoveVisualizerFile = useCallback(
-  async (fileId: string) => {
-    try {
-      // First update the UI immediately to prevent fetching
-      const updatedFileIds = visualizerFileIds.filter((id) => id !== fileId);
-      onVisualizerFileIdsChange?.(updatedFileIds);
-      
-      // Then delete from server
-      await deleteVisualizerMutation.mutateAsync(fileId);
-      
-      // Finally refetch to get fresh data
-      refetchVisualizers();
-      // console.log(`Successfully removed visualizer: ${fileName}`);
-    } catch (error) {
-      console.error("Failed to remove visualizer:", error);
-      // Revert the UI change if deletion failed
-      onVisualizerFileIdsChange?.(visualizerFileIds);
-    }
-  },
-  [visualizerFileIds, onVisualizerFileIdsChange, deleteVisualizerMutation, refetchVisualizers]
-);
+    async (fileId: string) => {
+      try {
+        // First update the UI immediately to prevent fetching
+        const updatedFileIds = visualizerFileIds.filter((id) => id !== fileId);
+        onVisualizerFileIdsChange?.(updatedFileIds);
+        
+        // Then delete from server
+        await deleteVisualizerMutation.mutateAsync(fileId);
+        
+        // Finally refetch to get fresh data
+        refetchVisualizers();
+        // console.log(`Successfully removed visualizer: ${fileName}`);
+      } catch (error) {
+        console.error("Failed to remove visualizer:", error);
+        // Revert the UI change if deletion failed
+        onVisualizerFileIdsChange?.(visualizerFileIds);
+      }
+    },
+    [visualizerFileIds, onVisualizerFileIdsChange, deleteVisualizerMutation, refetchVisualizers]
+  );
 
   const handleVisualizerFileNotFound = useCallback(
-  (fileId: string) => {
-    // Immediately remove the deleted file ID from the list to prevent future fetches
-    const updatedFileIds = visualizerFileIds.filter((id) => id !== fileId);
-    if (updatedFileIds.length !== visualizerFileIds.length) {
-      onVisualizerFileIdsChange?.(updatedFileIds);
-      // console.log(`Removed deleted visualizer file ID from list: ${fileId}`);
-    }
-  },
-  [visualizerFileIds, onVisualizerFileIdsChange] // Removed refetchVisualizers dependency
-);
+    (fileId: string) => {
+      // Immediately remove the deleted file ID from the list to prevent future fetches
+      const updatedFileIds = visualizerFileIds.filter((id) => id !== fileId);
+      if (updatedFileIds.length !== visualizerFileIds.length) {
+        onVisualizerFileIdsChange?.(updatedFileIds);
+        // console.log(`Removed deleted visualizer file ID from list: ${fileId}`);
+      }
+    },
+    [visualizerFileIds, onVisualizerFileIdsChange] // Removed refetchVisualizers dependency
+  );
 
   // FIXED: Separate unused and used images properly
   const allValidImages = uploadedImages.filter(
@@ -1143,37 +1145,16 @@ export function SolutionRichTextEditor({
                   </div>
                 </div>
 
-                {/* FIXED: Code Preview with proper language display and syntax highlighting */}
+                {/* UPDATED: Code Preview with CodeSyntaxHighlighter */}
                 <div className="mt-4">
                   <h5 className="text-xs font-medium text-gray-600 mb-2">
                     Preview:
                   </h5>
-                  <div className="bg-gray-900 rounded-lg overflow-hidden border">
-                    <div className="bg-gray-800 px-4 py-2 text-xs text-gray-300 font-medium flex items-center justify-between border-b border-gray-700">
-                      <span className="font-mono">
-                        {PROGRAMMING_LANGUAGES.find(
-                          (lang) => lang.value === codeSnippet.language
-                        )?.label || "Code"}
-                      </span>
-                      <span className="text-gray-400 text-xs">
-                        {codeSnippet.description}
-                      </span>
-                    </div>
-                    <pre className="p-4 overflow-x-auto bg-gray-900">
-                      <code
-                        className="text-sm font-mono whitespace-pre block"
-                        style={{
-                          color: "#e6e1dc",
-                          fontFamily:
-                            'Monaco, Menlo, "Ubuntu Mono", "SF Mono", Consolas, monospace',
-                          fontSize: "13px",
-                          lineHeight: "1.6",
-                        }}
-                      >
-                        {codeSnippet.code}
-                      </code>
-                    </pre>
-                  </div>
+                  <CodeSyntaxHighlighter 
+                    codeSnippet={codeSnippet}
+                    showHeader={true}
+                    className="border-0"
+                  />
                 </div>
               </div>
             )}

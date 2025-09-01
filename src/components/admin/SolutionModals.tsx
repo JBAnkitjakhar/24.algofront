@@ -1,4 +1,4 @@
-// src/components/admin/SolutionModals.tsx - Solution management modals
+// src/components/admin/SolutionModals.tsx
 
 "use client";
 
@@ -16,6 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { SolutionRichTextEditor } from "./SolutionRichTextEditor";
 import { MarkdownRenderer } from "../common/MarkdownRenderer";
+import { CodeSyntaxHighlighter } from "../common/CodeSyntaxHighlighter"; // NEW IMPORT
 import {
   useCreateSolution,
   useUpdateSolution,
@@ -28,6 +29,7 @@ import type {
   CreateSolutionRequest,
   UpdateSolutionRequest,
 } from "@/types";
+
 interface CreateSolutionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -305,20 +307,14 @@ export function CreateSolutionModal({
                               <MarkdownRenderer content={formData.content} />
                             </div>
 
+                            {/* UPDATED: Use CodeSyntaxHighlighter */}
                             {formData.codeSnippet && (
                               <div>
                                 <h3 className="text-sm font-medium text-gray-700 mb-2">Code Solution</h3>
-                                <div className="bg-gray-900 rounded-lg overflow-hidden">
-                                  <div className="bg-gray-800 px-4 py-2 text-xs text-gray-300 font-medium flex items-center justify-between">
-                                    <span>{formData.codeSnippet.language.charAt(0).toUpperCase() + formData.codeSnippet.language.slice(1)}</span>
-                                    <span className="text-gray-400">{formData.codeSnippet.description}</span>
-                                  </div>
-                                  <pre className="p-4 overflow-x-auto">
-                                    <code className="text-sm text-gray-100 font-mono whitespace-pre">
-                                      {formData.codeSnippet.code}
-                                    </code>
-                                  </pre>
-                                </div>
+                                <CodeSyntaxHighlighter 
+                                  codeSnippet={formData.codeSnippet}
+                                  showHeader={true}
+                                />
                               </div>
                             )}
 
@@ -626,20 +622,14 @@ export function EditSolutionModal({
                               <MarkdownRenderer content={formData.content} />
                             </div>
 
+                            {/* UPDATED: Use CodeSyntaxHighlighter */}
                             {formData.codeSnippet && (
                               <div>
                                 <h3 className="text-sm font-medium text-gray-700 mb-2">Code Solution</h3>
-                                <div className="bg-gray-900 rounded-lg overflow-hidden">
-                                  <div className="bg-gray-800 px-4 py-2 text-xs text-gray-300 font-medium flex items-center justify-between">
-                                    <span>{formData.codeSnippet.language.charAt(0).toUpperCase() + formData.codeSnippet.language.slice(1)}</span>
-                                    <span className="text-gray-400">{formData.codeSnippet.description}</span>
-                                  </div>
-                                  <pre className="p-4 overflow-x-auto">
-                                    <code className="text-sm text-gray-100 font-mono whitespace-pre">
-                                      {formData.codeSnippet.code}
-                                    </code>
-                                  </pre>
-                                </div>
+                                <CodeSyntaxHighlighter 
+                                  codeSnippet={formData.codeSnippet}
+                                  showHeader={true}
+                                />
                               </div>
                             )}
 
