@@ -261,6 +261,10 @@ class SolutionApiService {
   getVisualizerFileUrl(fileId: string): string {
     return `${apiClient.getInstance().defaults.baseURL}/files/visualizers/${fileId}`;
   }
+
+  
 }
+
+
 
 export const solutionApiService = new SolutionApiService();

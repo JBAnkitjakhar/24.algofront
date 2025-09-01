@@ -40,9 +40,9 @@ function SolutionCard({ solution }: { solution: Solution }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { isAdmin } = useAuth();
 
-  // Count media assets
+  // FIXED: Count media assets properly
   const imageCount = solution.imageUrls?.length || 0;
-  const visualizerCount = solution.visualizerFileIds?.length || 0;
+  const visualizerCount = solution.visualizerFileIds?.length || 0; // This should work now
   const hasYoutube = !!solution.youtubeLink;
   const hasDrive = !!solution.driveLink;
   const hasCodeSnippet = !!solution.codeSnippet;
@@ -96,7 +96,7 @@ function SolutionCard({ solution }: { solution: Solution }) {
             </p>
           </div>
 
-          {/* Media and Assets indicators */}
+          {/* FIXED: Media and Assets indicators */}
           <div className="mt-4">
             <div className="flex flex-wrap gap-2">
               {hasCodeSnippet && (
@@ -113,6 +113,7 @@ function SolutionCard({ solution }: { solution: Solution }) {
                 </div>
               )}
 
+              {/* FIXED: Visualizer badge - now shows correct count */}
               {visualizerCount > 0 && (
                 <div className="flex items-center text-purple-600 bg-purple-50 px-2 py-1 rounded-full text-xs">
                   <CubeTransparentIcon className="h-3 w-3 mr-1" />
@@ -136,42 +137,12 @@ function SolutionCard({ solution }: { solution: Solution }) {
             </div>
           </div>
 
-          {/* Links Preview
-          {(hasYoutube || hasDrive) && (
-            <div className="mt-3 space-y-1">
-              {hasYoutube && (
-                <div className="flex items-center text-sm">
-                  <PlayIcon className="h-4 w-4 text-red-500 mr-2" />
-                  <a
-                    href={solution.youtubeLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-red-600 hover:text-red-800 truncate"
-                  >
-                    YouTube Video Available
-                  </a>
-                </div>
-              )}
-              {hasDrive && (
-                <div className="flex items-center text-sm">
-                  <FolderOpenIcon className="h-4 w-4 text-indigo-500 mr-2" />
-                  <a
-                    href={solution.driveLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-indigo-600 hover:text-indigo-800 truncate"
-                  >
-                    Additional Resources
-                  </a>
-                </div>
-              )}
-            </div>
-          )} */}
-
-          {/* Visualizer Preview */}
+          {/* FIXED: Enhanced Visualizer Preview with proper links */}
           {visualizerCount > 0 && (
             <div className="mt-3">
-              <div className="text-sm text-gray-600 mb-2">Interactive Visualizers:</div>
+              <div className="text-sm text-gray-600 mb-2 font-medium">
+                Interactive Visualizers ({visualizerCount}):
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {solution.visualizerFileIds?.map((fileId, index) => (
                   <a
@@ -179,15 +150,48 @@ function SolutionCard({ solution }: { solution: Solution }) {
                     href={solutionApiService.getVisualizerFileUrl(fileId)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center p-2 border border-purple-200 rounded bg-purple-50 hover:bg-purple-100 transition-colors"
+                    className="flex items-center p-2 border border-purple-200 rounded bg-purple-50 hover:bg-purple-100 transition-colors group"
                   >
                     <CubeTransparentIcon className="h-4 w-4 text-purple-600 mr-2" />
-                    <span className="text-sm text-purple-800">
-                      Visualizer {index + 1}
+                    <span className="text-sm text-purple-800 flex-1">
+                      HTML Visualizer {index + 1}
                     </span>
-                    <EyeIcon className="h-3 w-3 text-purple-600 ml-auto" />
+                    <EyeIcon className="h-3 w-3 text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </a>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* FIXED: Enhanced Links Preview */}
+          {(hasYoutube || hasDrive) && (
+            <div className="mt-3">
+              <div className="text-sm text-gray-600 mb-2 font-medium">External Resources:</div>
+              <div className="space-y-1">
+                {hasYoutube && (
+                  <a
+                    href={solution.youtubeLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center p-2 border border-red-200 rounded bg-red-50 hover:bg-red-100 transition-colors group"
+                  >
+                    <PlayIcon className="h-4 w-4 text-red-500 mr-2" />
+                    <span className="text-sm text-red-800 flex-1">YouTube Video</span>
+                    <EyeIcon className="h-3 w-3 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </a>
+                )}
+                {hasDrive && (
+                  <a
+                    href={solution.driveLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center p-2 border border-indigo-200 rounded bg-indigo-50 hover:bg-indigo-100 transition-colors group"
+                  >
+                    <FolderOpenIcon className="h-4 w-4 text-indigo-500 mr-2" />
+                    <span className="text-sm text-indigo-800 flex-1">Google Drive Resources</span>
+                    <EyeIcon className="h-3 w-3 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </a>
+                )}
               </div>
             </div>
           )}

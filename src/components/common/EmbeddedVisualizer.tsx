@@ -114,145 +114,152 @@ export function EmbeddedVisualizer({
   // FIXED: Enhanced fetch with proper JWT authentication for visualizer access
 
   useEffect(() => {
-    const fetchVisualizerContent = async () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      abortControllerRef.current = new AbortController();
-
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        if (!fileId || fileId.trim().length === 0) {
-          throw new Error("Invalid file identifier");
-        }
-
-        // CRITICAL: Get JWT token for authentication
-        const token = cookieManager.getToken();
-        if (!token) {
-          setError({
-            type: "auth",
-            message: "Authentication required",
-            details: "Please log in to view visualizer content.",
-            recoverable: true,
-          });
-          return;
-        }
-
-        const apiBaseUrl =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
-        const url = `${apiBaseUrl}/files/visualizers/${fileId}`;
-
-        console.log(`[Visualizer] Fetching: ${url} with JWT token`);
-
-        // FIXED: Proper fetch with JWT authentication
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            Accept: "text/html",
-            Authorization: `Bearer ${token}`, // CRITICAL: JWT token for authentication
-            "Cache-Control": "no-cache",
-          },
-          credentials: "include", // Include cookies for additional auth support
-          signal: abortControllerRef.current.signal,
-        });
-
-        console.log(
-          `[Visualizer] Response: ${response.status} ${response.statusText}`
-        );
-
-        if (!response.ok) {
-          const errorInfo = categorizeError(
-            response.status,
-            response.statusText
-          );
-          setError(errorInfo);
-
-          if (response.status === 404 && onFileNotFound) {
-            onFileNotFound(fileId);
-          }
-
-          onError?.(errorInfo.message);
-          return;
-        }
-
-        const contentType = response.headers.get("content-type");
-        if (contentType && !contentType.includes("text/html")) {
-          setError({
-            type: "content",
-            message: "Invalid file format",
-            details: `Expected HTML content, received ${contentType}`,
-            recoverable: false,
-          });
-          return;
-        }
-
-        const htmlText = await response.text();
-
-        if (!htmlText || htmlText.trim().length === 0) {
-          setError({
-            type: "content",
-            message: "Empty file",
-            details: "The visualizer file appears to be empty.",
-            recoverable: false,
-          });
-          return;
-        }
-
-        // Detect if content is interactive
-        const hasJavaScript =
-          htmlText.toLowerCase().includes("<script") ||
-          htmlText.toLowerCase().includes("javascript:");
-        setIsInteractive(hasJavaScript);
-
-        // Clean up previous blob URL
-        if (blobUrlRef.current) {
-          URL.revokeObjectURL(blobUrlRef.current);
-        }
-
-        setHtmlContent(htmlText);
-        setRetryCount(0);
-        console.log(
-          `[Visualizer] Content loaded successfully (${htmlText.length} chars), Interactive: ${hasJavaScript}`
-        );
-      } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
-          console.log("[Visualizer] Request aborted");
-          return;
-        }
-
-        console.error("[Visualizer] Fetch error:", err);
-
-        const errorInfo: VisualizerError = {
-          type: "network",
-          message: "Network error",
-          details:
-            err instanceof Error ? err.message : "Failed to connect to server",
-          recoverable: true,
-        };
-
-        setError(errorInfo);
-        onError?.(errorInfo.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (fileId) {
-      fetchVisualizerContent();
+  const fetchVisualizerContent = async () => {
+    // FIXED: Don't fetch if we already know the file was deleted
+    if (error && error.type === "notfound") {
+      return; // Skip fetch if we already know file is deleted
     }
 
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    abortControllerRef.current = new AbortController();
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      if (!fileId || fileId.trim().length === 0) {
+        throw new Error("Invalid file identifier");
       }
+
+      // CRITICAL: Get JWT token for authentication
+      const token = cookieManager.getToken();
+      if (!token) {
+        setError({
+          type: "auth",
+          message: "Authentication required",
+          details: "Please log in to view visualizer content.",
+          recoverable: true,
+        });
+        return;
+      }
+
+      const apiBaseUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+      const url = `${apiBaseUrl}/files/visualizers/${fileId}`;
+
+      console.log(`[Visualizer] Fetching: ${url} with JWT token`);
+
+      // FIXED: Proper fetch with JWT authentication
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "text/html",
+          Authorization: `Bearer ${token}`, // CRITICAL: JWT token for authentication
+          "Cache-Control": "no-cache",
+        },
+        credentials: "include", // Include cookies for additional auth support
+        signal: abortControllerRef.current.signal,
+      });
+
+      console.log(
+        `[Visualizer] Response: ${response.status} ${response.statusText}`
+      );
+
+      if (!response.ok) {
+        const errorInfo = categorizeError(
+          response.status,
+          response.statusText
+        );
+        setError(errorInfo);
+
+        // FIXED: Call onFileNotFound for 404 errors to clean up the UI
+        if (response.status === 404 && onFileNotFound) {
+          onFileNotFound(fileId);
+        }
+
+        onError?.(errorInfo.message);
+        return;
+      }
+
+      const contentType = response.headers.get("content-type");
+      if (contentType && !contentType.includes("text/html")) {
+        setError({
+          type: "content",
+          message: "Invalid file format",
+          details: `Expected HTML content, received ${contentType}`,
+          recoverable: false,
+        });
+        return;
+      }
+
+      const htmlText = await response.text();
+
+      if (!htmlText || htmlText.trim().length === 0) {
+        setError({
+          type: "content",
+          message: "Empty file",
+          details: "The visualizer file appears to be empty.",
+          recoverable: false,
+        });
+        return;
+      }
+
+      // Detect if content is interactive
+      const hasJavaScript =
+        htmlText.toLowerCase().includes("<script") ||
+        htmlText.toLowerCase().includes("javascript:");
+      setIsInteractive(hasJavaScript);
+
+      // Clean up previous blob URL
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
       }
-    };
-  }, [fileId, onError, onFileNotFound, retryCount]);
+
+      setHtmlContent(htmlText);
+      setRetryCount(0);
+      console.log(
+        `[Visualizer] Content loaded successfully (${htmlText.length} chars), Interactive: ${hasJavaScript}`
+      );
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        console.log("[Visualizer] Request aborted");
+        return;
+      }
+
+      console.error("[Visualizer] Fetch error:", err);
+
+      const errorInfo: VisualizerError = {
+        type: "network",
+        message: "Network error",
+        details:
+          err instanceof Error ? err.message : "Failed to connect to server",
+        recoverable: true,
+      };
+
+      setError(errorInfo);
+      onError?.(errorInfo.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // FIXED: Only fetch if fileId exists and we don't have a permanent error
+  if (fileId && !(error && !error.recoverable)) {
+    fetchVisualizerContent();
+  }
+
+  return () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+    }
+  };
+}, [fileId, onError, onFileNotFound, retryCount, error]);
 
   const handleRetry = useCallback(() => {
     if (retryCount < 3) {

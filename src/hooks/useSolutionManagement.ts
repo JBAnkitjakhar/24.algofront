@@ -339,8 +339,16 @@ export function useUploadVisualizerFile() {
       }
       throw new Error(response.message || 'Failed to upload visualizer file');
     },
-    onSuccess: () => {
-      // toast.success('HTML visualizer uploaded successfully');
+    onSuccess: (result, variables) => {
+      // FIXED: Show proper success message with filename
+      const fileName = result.originalFileName || variables.file.name;
+      toast.success(
+        `"${fileName}" uploaded successfully!`,
+        {
+          duration: 2500,
+          icon: "🚀",
+        }
+      );
     },
     onError: (error: Error) => {
       toast.error(`Failed to upload visualizer: ${error.message}`);
@@ -386,9 +394,16 @@ export function useDeleteVisualizerFile() {
       throw new Error(response.message || 'Failed to delete visualizer file');
     },
     onSuccess: () => {
-      // Invalidate all visualizer queries (both with and without solutionId)
+      // Invalidate all visualizer queries
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SOLUTIONS.VISUALIZERS() });
-      // toast.success('Visualizer file deleted successfully');
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SOLUTIONS.LIST });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SOLUTIONS.STATS });
+      
+      // FIXED: Show success toast with proper messaging
+      toast.success('Visualizer removed successfully', {
+        duration: 2000,
+        icon: "🗑️",
+      });
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete visualizer: ${error.message}`);
