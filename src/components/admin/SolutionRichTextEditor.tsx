@@ -38,19 +38,19 @@ interface SolutionRichTextEditorProps {
   onTextContentChange: (value: string) => void;
   codeSnippet?: CodeSnippet;
   onCodeSnippetChange: (snippet?: CodeSnippet) => void;
-  
+
   // Links
   youtubeLink?: string;
   onYoutubeLinkChange: (link?: string) => void;
   driveLink?: string;
   onDriveLinkChange: (link?: string) => void;
-  
+
   // Media - FIXED: Better image management
   uploadedImages?: string[];
   onImagesChange?: (images: string[]) => void;
   visualizerFileIds?: string[];
   onVisualizerFileIdsChange?: (fileIds: string[]) => void;
-  
+
   // Configuration
   placeholder?: string;
   maxLength?: number;
@@ -62,84 +62,168 @@ interface SolutionRichTextEditorProps {
 
 // FIXED: Complete language list with proper templates
 const PROGRAMMING_LANGUAGES = [
-  { value: "javascript", label: "JavaScript", template: "function solution() {\n    // Your JavaScript solution here\n    return null;\n}" },
-  { value: "python", label: "Python", template: "def solution():\n    # Your Python solution here\n    pass" },
-  { value: "java", label: "Java", template: "public class Solution {\n    public void solution() {\n        // Your Java solution here\n    }\n}" },
-  { value: "cpp", label: "C++", template: "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Your C++ solution here\n    return 0;\n}" },
-  { value: "c", label: "C", template: "#include <stdio.h>\n\nint main() {\n    // Your C solution here\n    return 0;\n}" },
-  { value: "typescript", label: "TypeScript", template: "function solution(): void {\n    // Your TypeScript solution here\n}" },
-  { value: "go", label: "Go", template: 'package main\n\nimport "fmt"\n\nfunc main() {\n    // Your Go solution here\n}' },
-  { value: "rust", label: "Rust", template: "fn main() {\n    // Your Rust solution here\n}" },
-  { value: "php", label: "PHP", template: "<?php\n// Your PHP solution here\n?>" },
-  { value: "ruby", label: "Ruby", template: "def solution\n  # Your Ruby solution here\nend" },
-  { value: "swift", label: "Swift", template: "func solution() {\n    // Your Swift solution here\n}" },
-  { value: "kotlin", label: "Kotlin", template: "fun main() {\n    // Your Kotlin solution here\n}" },
-  { value: "html", label: "HTML", template: "<!DOCTYPE html>\n<html>\n<head>\n    <title>Example</title>\n</head>\n<body>\n    <!-- Your HTML here -->\n</body>\n</html>" },
-  { value: "css", label: "CSS", template: ".example {\n    /* Your CSS here */\n}" },
-  { value: "sql", label: "SQL", template: "-- Your SQL query here\nSELECT * FROM table_name;" },
+  {
+    value: "javascript",
+    label: "JavaScript",
+    template:
+      "function solution() {\n    // Your JavaScript solution here\n    return null;\n}",
+  },
+  {
+    value: "python",
+    label: "Python",
+    template: "def solution():\n    # Your Python solution here\n    pass",
+  },
+  {
+    value: "java",
+    label: "Java",
+    template:
+      "public class Solution {\n    public void solution() {\n        // Your Java solution here\n    }\n}",
+  },
+  {
+    value: "cpp",
+    label: "C++",
+    template:
+      "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Your C++ solution here\n    return 0;\n}",
+  },
+  {
+    value: "c",
+    label: "C",
+    template:
+      "#include <stdio.h>\n\nint main() {\n    // Your C solution here\n    return 0;\n}",
+  },
+  {
+    value: "typescript",
+    label: "TypeScript",
+    template:
+      "function solution(): void {\n    // Your TypeScript solution here\n}",
+  },
+  {
+    value: "go",
+    label: "Go",
+    template:
+      'package main\n\nimport "fmt"\n\nfunc main() {\n    // Your Go solution here\n}',
+  },
+  {
+    value: "rust",
+    label: "Rust",
+    template: "fn main() {\n    // Your Rust solution here\n}",
+  },
+  {
+    value: "php",
+    label: "PHP",
+    template: "<?php\n// Your PHP solution here\n?>",
+  },
+  {
+    value: "ruby",
+    label: "Ruby",
+    template: "def solution\n  # Your Ruby solution here\nend",
+  },
+  {
+    value: "swift",
+    label: "Swift",
+    template: "func solution() {\n    // Your Swift solution here\n}",
+  },
+  {
+    value: "kotlin",
+    label: "Kotlin",
+    template: "fun main() {\n    // Your Kotlin solution here\n}",
+  },
+  {
+    value: "html",
+    label: "HTML",
+    template:
+      "<!DOCTYPE html>\n<html>\n<head>\n    <title>Example</title>\n</head>\n<body>\n    <!-- Your HTML here -->\n</body>\n</html>",
+  },
+  {
+    value: "css",
+    label: "CSS",
+    template: ".example {\n    /* Your CSS here */\n}",
+  },
+  {
+    value: "sql",
+    label: "SQL",
+    template: "-- Your SQL query here\nSELECT * FROM table_name;",
+  },
 ];
 
-
-
 // FIXED: Embedded visualizer component that works within our website
-const EmbeddedVisualizer = ({ fileId, title, height = "300px", onError }: {
+const EmbeddedVisualizer = ({
+  fileId,
+  title,
+  height = "300px",
+  onError,
+  onFileNotFound,
+}: {
   fileId: string;
   title: string;
   height?: string;
   onError?: (error: Error) => void;
+  onFileNotFound?: (fileId: string) => void; // NEW: Callback for file deletion
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [htmlContent, setHtmlContent] = useState<string>('');
+  const [htmlContent, setHtmlContent] = useState<string>("");
 
-  // FIXED: Fetch HTML content with proper JWT authentication
+  // FIXED: Enhanced fetch with proper error handling for deleted files
   useEffect(() => {
     const fetchVisualizerContent = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        // FIXED: Get token using your existing cookie manager
         const token = cookieManager.getToken();
         if (!token) {
-          throw new Error('Authentication token not found. Please log in again.');
+          throw new Error(
+            "Authentication token not found. Please log in again."
+          );
         }
 
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+        const apiBaseUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
         const url = `${apiBaseUrl}/files/visualizers/${fileId}`;
 
-        // console.log('Fetching visualizer from:', url);
-        // console.log('Token present:', !!token);
-
-        // FIXED: Include proper Authorization header
         const response = await fetch(url, {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Accept': 'text/html',
-            'Authorization': `Bearer ${token}`, // FIXED: Include JWT token
-            'Cache-Control': 'no-cache'
+            Accept: "text/html",
+            Authorization: `Bearer ${token}`,
+            "Cache-Control": "no-cache",
           },
-          credentials: 'include',
+          credentials: "include",
         });
 
         if (!response.ok) {
+          // FIXED: Handle 404 gracefully for deleted files
+          if (response.status === 404) {
+            // Notify parent component that file was not found (likely deleted)
+            onFileNotFound?.(fileId);
+            setError("File has been deleted");
+            return; // Don't call onError for expected 404s
+          }
+
           if (response.status === 401) {
-            throw new Error('Authentication expired. Please refresh the page and try again.');
+            throw new Error(
+              "Authentication expired. Please refresh the page and try again."
+            );
           }
           throw new Error(`Failed to load visualizer: ${response.status}`);
         }
 
         const htmlText = await response.text();
-        
+
         if (!htmlText || htmlText.trim().length === 0) {
-          throw new Error('Empty response received from server');
+          throw new Error("Empty response received from server");
         }
 
         setHtmlContent(htmlText);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load visualizer';
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to load visualizer";
         setError(errorMessage);
-        onError?.(new Error(errorMessage));
+        // FIXED: Only call onError for unexpected errors, not 404s
+        if (!(err instanceof Error && err.message.includes("404"))) {
+          onError?.(new Error(errorMessage));
+        }
       } finally {
         setIsLoading(false);
       }
@@ -148,15 +232,32 @@ const EmbeddedVisualizer = ({ fileId, title, height = "300px", onError }: {
     if (fileId) {
       fetchVisualizerContent();
     }
-  }, [fileId, onError]);
+  }, [fileId, onError, onFileNotFound]);
 
   // Create blob URL for secure HTML rendering
   const createBlobUrl = useCallback((content: string) => {
-    const blob = new Blob([content], { type: 'text/html' });
+    const blob = new Blob([content], { type: "text/html" });
     return URL.createObjectURL(blob);
   }, []);
 
+  // FIXED: Professional error display for deleted files
   if (error) {
+    if (error === "File has been deleted") {
+      return (
+        <div className="border border-amber-200 rounded-lg p-4 bg-amber-50">
+          <div className="flex items-center text-amber-800">
+            <ExclamationTriangleIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+            <div>
+              <div className="font-medium">Visualizer Removed</div>
+              <div className="text-sm text-amber-700 mt-1">
+                This visualizer has been deleted and is no longer available.
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="border border-red-200 rounded-lg p-4 bg-red-50">
         <div className="flex items-center text-red-800">
@@ -164,9 +265,6 @@ const EmbeddedVisualizer = ({ fileId, title, height = "300px", onError }: {
           <div>
             <div className="font-medium">Unable to load visualizer</div>
             <div className="text-sm text-red-600 mt-1">{error}</div>
-            <div className="text-xs text-red-500 mt-2">
-              Check your authentication and try again.
-            </div>
           </div>
         </div>
       </div>
@@ -175,7 +273,10 @@ const EmbeddedVisualizer = ({ fileId, title, height = "300px", onError }: {
 
   if (isLoading) {
     return (
-      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50" style={{ height }}>
+      <div
+        className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+        style={{ height }}
+      >
         <div className="flex items-center justify-center h-full">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <span className="ml-3 text-gray-600">Loading visualizer...</span>
@@ -185,7 +286,10 @@ const EmbeddedVisualizer = ({ fileId, title, height = "300px", onError }: {
   }
 
   return (
-    <div className="relative border border-gray-200 rounded-lg overflow-hidden" style={{ height }}>
+    <div
+      className="relative border border-gray-200 rounded-lg overflow-hidden"
+      style={{ height }}
+    >
       {htmlContent && (
         <iframe
           src={createBlobUrl(htmlContent)}
@@ -199,6 +303,7 @@ const EmbeddedVisualizer = ({ fileId, title, height = "300px", onError }: {
   );
 };
 
+// FIXED: Enhanced file management with professional notifications
 export function SolutionRichTextEditor({
   textContent,
   onTextContentChange,
@@ -224,8 +329,10 @@ export function SolutionRichTextEditor({
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [activeTab, setActiveTab] = useState<'text' | 'code' | 'links' | 'visualizers'>('text');
-  
+  const [activeTab, setActiveTab] = useState<
+    "text" | "code" | "links" | "visualizers"
+  >("text");
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const codeTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -236,8 +343,8 @@ export function SolutionRichTextEditor({
   const validateDriveMutation = useValidateDriveLink();
   const uploadVisualizerMutation = useUploadVisualizerFile();
   const deleteVisualizerMutation = useDeleteVisualizerFile();
-  const { data: visualizerFiles, refetch: refetchVisualizers } = useVisualizerFilesBySolution(solutionId || '');
-
+  const { data: visualizerFiles, refetch: refetchVisualizers } =
+    useVisualizerFilesBySolution(solutionId || "");
   // FIXED: Better image upload handling that preserves all images
   const handleImageUpload = useCallback(
     async (files: FileList | File[]) => {
@@ -277,7 +384,7 @@ export function SolutionRichTextEditor({
         const allExistingImages = [...uploadedImages]; // Keep all existing images
         const allImages = [...allExistingImages, ...newImageUrls];
         onImagesChange?.(allImages);
-        
+
         // Show image preview automatically
         setShowImagePreview(true);
 
@@ -304,7 +411,7 @@ export function SolutionRichTextEditor({
 
       const fileArray = Array.from(files);
       const htmlFiles = fileArray.filter((file) =>
-        file.name.toLowerCase().endsWith('.html')
+        file.name.toLowerCase().endsWith(".html")
       );
 
       if (htmlFiles.length === 0) {
@@ -316,14 +423,19 @@ export function SolutionRichTextEditor({
       const maxVisualizers = 2;
 
       if (currentVisualizerCount + htmlFiles.length > maxVisualizers) {
-        toast.error(`Maximum ${maxVisualizers} HTML visualizers allowed per solution`);
+        toast.error(
+          `Maximum ${maxVisualizers} HTML visualizers allowed per solution`
+        );
         return;
       }
 
       try {
         const newFileIds: string[] = [];
         for (const file of htmlFiles) {
-          const result = await uploadVisualizerMutation.mutateAsync({ solutionId, file });
+          const result = await uploadVisualizerMutation.mutateAsync({
+            solutionId,
+            file,
+          });
           if (result.fileId) {
             newFileIds.push(result.fileId);
           }
@@ -333,13 +445,28 @@ export function SolutionRichTextEditor({
         onVisualizerFileIdsChange?.(updatedFileIds);
         refetchVisualizers();
 
-        toast.success(`${newFileIds.length} visualizer(s) uploaded successfully`);
+        // FIXED: Single professional success notification
+        toast.success(
+          `${newFileIds.length} interactive visualizer${
+            newFileIds.length > 1 ? "s" : ""
+          } uploaded successfully!`,
+          {
+            duration: 3000,
+            icon: "✅",
+          }
+        );
       } catch (error) {
         console.error("Visualizer upload failed:", error);
         toast.error("Failed to upload visualizers");
       }
     },
-    [solutionId, visualizerFileIds, onVisualizerFileIdsChange, uploadVisualizerMutation, refetchVisualizers]
+    [
+      solutionId,
+      visualizerFileIds,
+      onVisualizerFileIdsChange,
+      uploadVisualizerMutation,
+      refetchVisualizers,
+    ]
   );
 
   // Handle drag and drop
@@ -360,7 +487,7 @@ export function SolutionRichTextEditor({
       setDragActive(false);
 
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        if (activeTab === 'visualizers') {
+        if (activeTab === "visualizers") {
           handleVisualizerUpload(e.dataTransfer.files);
         } else {
           handleImageUpload(e.dataTransfer.files);
@@ -507,7 +634,11 @@ export function SolutionRichTextEditor({
   // FIXED: Better code snippet management with dynamic language selection
   const updateCodeSnippet = useCallback(
     (field: keyof CodeSnippet, value: string) => {
-      const currentSnippet = codeSnippet || { language: 'javascript', code: '', description: '' };
+      const currentSnippet = codeSnippet || {
+        language: "javascript",
+        code: "",
+        description: "",
+      };
       const updatedSnippet = { ...currentSnippet, [field]: value };
       onCodeSnippetChange?.(updatedSnippet);
     },
@@ -530,14 +661,16 @@ export function SolutionRichTextEditor({
   // FIXED: Dynamic language change with proper template updates
   const handleLanguageChange = useCallback(
     (language: string) => {
-      const selectedLanguage = PROGRAMMING_LANGUAGES.find((lang) => lang.value === language);
+      const selectedLanguage = PROGRAMMING_LANGUAGES.find(
+        (lang) => lang.value === language
+      );
       if (selectedLanguage && codeSnippet) {
         // Update all fields together to ensure consistency
         const updatedSnippet = {
           ...codeSnippet,
           language: language,
           code: selectedLanguage.template,
-          description: `${selectedLanguage.label} solution code`
+          description: `${selectedLanguage.label} solution code`,
         };
         onCodeSnippetChange?.(updatedSnippet);
       }
@@ -547,24 +680,51 @@ export function SolutionRichTextEditor({
 
   // Remove visualizer file
   const handleRemoveVisualizerFile = useCallback(
-    async (fileId: string) => {
+    async (fileId: string, fileName: string) => {
       try {
         await deleteVisualizerMutation.mutateAsync(fileId);
-        const updatedFileIds = visualizerFileIds.filter(id => id !== fileId);
+        const updatedFileIds = visualizerFileIds.filter((id) => id !== fileId);
         onVisualizerFileIdsChange?.(updatedFileIds);
         refetchVisualizers();
-        toast.success("Visualizer removed successfully");
+
+        // FIXED: Single professional success notification
+        toast.success(`"${fileName}" visualizer removed successfully`, {
+          duration: 3000,
+          icon: "🗑️",
+        });
       } catch (error) {
         console.error("Failed to remove visualizer:", error);
         toast.error("Failed to remove visualizer");
       }
     },
-    [visualizerFileIds, onVisualizerFileIdsChange, deleteVisualizerMutation, refetchVisualizers]
+    [
+      visualizerFileIds,
+      onVisualizerFileIdsChange,
+      deleteVisualizerMutation,
+      refetchVisualizers,
+    ]
+  );
+
+  const handleVisualizerFileNotFound = useCallback(
+    (fileId: string) => {
+      // Remove the deleted file ID from the list without showing error
+      const updatedFileIds = visualizerFileIds.filter((id) => id !== fileId);
+      if (updatedFileIds.length !== visualizerFileIds.length) {
+        onVisualizerFileIdsChange?.(updatedFileIds);
+        refetchVisualizers();
+        // Don't show any notification - file was already deleted
+      }
+    },
+    [visualizerFileIds, onVisualizerFileIdsChange, refetchVisualizers]
   );
 
   // FIXED: Separate unused and used images properly
-  const allValidImages = uploadedImages.filter((url) => url && url.trim() !== "");
-  const unusedImages = allValidImages.filter((url) => !isImageUsedInContent(url));
+  const allValidImages = uploadedImages.filter(
+    (url) => url && url.trim() !== ""
+  );
+  const unusedImages = allValidImages.filter(
+    (url) => !isImageUsedInContent(url)
+  );
   const usedImages = allValidImages.filter((url) => isImageUsedInContent(url));
 
   const charCount = textContent.length;
@@ -576,10 +736,14 @@ export function SolutionRichTextEditor({
       <div className="bg-gray-50 border-b border-gray-200">
         <nav className="flex space-x-8 px-3 py-2" aria-label="Tabs">
           {[
-            { id: 'text', name: 'Text Content', icon: DocumentTextIcon },
-            { id: 'code', name: 'Code Solution', icon: CodeBracketIcon },
-            { id: 'links', name: 'Links', icon: LinkIcon },
-            { id: 'visualizers', name: 'HTML Visualizers', icon: CubeTransparentIcon },
+            { id: "text", name: "Text Content", icon: DocumentTextIcon },
+            { id: "code", name: "Code Solution", icon: CodeBracketIcon },
+            { id: "links", name: "Links", icon: LinkIcon },
+            {
+              id: "visualizers",
+              name: "HTML Visualizers",
+              icon: CubeTransparentIcon,
+            },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -587,8 +751,8 @@ export function SolutionRichTextEditor({
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className={`${
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center`}
             >
               <tab.icon className="h-4 w-4 mr-1" />
@@ -601,7 +765,7 @@ export function SolutionRichTextEditor({
       {/* Tab Content */}
       <div className="relative">
         {/* Text Content Tab */}
-        {activeTab === 'text' && (
+        {activeTab === "text" && (
           <div>
             {/* Toolbar */}
             <div className="bg-gray-50 border-b border-gray-200 px-3 py-2 flex items-center gap-2 flex-wrap">
@@ -695,7 +859,11 @@ export function SolutionRichTextEditor({
               )}
             </div>
 
-            <div className={`grid ${showPreview ? "grid-cols-2 gap-4 p-4" : "grid-cols-1"}`}>
+            <div
+              className={`grid ${
+                showPreview ? "grid-cols-2 gap-4 p-4" : "grid-cols-1"
+              }`}
+            >
               {/* Text Editor */}
               <div className="relative">
                 <textarea
@@ -731,7 +899,9 @@ export function SolutionRichTextEditor({
                   <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
-                      <p className="mt-2 text-sm text-gray-600">Uploading images...</p>
+                      <p className="mt-2 text-sm text-gray-600">
+                        Uploading images...
+                      </p>
                     </div>
                   </div>
                 )}
@@ -777,7 +947,10 @@ export function SolutionRichTextEditor({
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                       {unusedImages.map((imageUrl, index) => (
-                        <div key={`unused-${imageUrl}`} className="relative group">
+                        <div
+                          key={`unused-${imageUrl}`}
+                          className="relative group"
+                        >
                           <Image
                             src={imageUrl}
                             alt={`Unused ${index + 1}`}
@@ -815,7 +988,10 @@ export function SolutionRichTextEditor({
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                       {usedImages.map((imageUrl, index) => (
-                        <div key={`used-${imageUrl}`} className="relative group">
+                        <div
+                          key={`used-${imageUrl}`}
+                          className="relative group"
+                        >
                           <Image
                             src={imageUrl}
                             alt={`Used ${index + 1}`}
@@ -847,7 +1023,7 @@ export function SolutionRichTextEditor({
         )}
 
         {/* FIXED: Code Content Tab with proper language selection and syntax highlighting */}
-        {activeTab === 'code' && (
+        {activeTab === "code" && (
           <div className="p-4">
             {!codeSnippet ? (
               <div className="text-center py-12">
@@ -928,50 +1104,63 @@ export function SolutionRichTextEditor({
                     <textarea
                       ref={codeTextareaRef}
                       value={codeSnippet.code}
-                      onChange={(e) => updateCodeSnippet("code", e.target.value)}
+                      onChange={(e) =>
+                        updateCodeSnippet("code", e.target.value)
+                      }
                       className="w-full h-80 text-sm font-mono rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 resize-none"
                       placeholder="Enter your solution code here..."
                       style={{
-                        backgroundColor: '#0f1419',
-                        color: '#e6e1dc',
-                        fontFamily: 'Monaco, Menlo, "Ubuntu Mono", "SF Mono", Consolas, monospace',
-                        fontSize: '13px',
-                        lineHeight: '1.6',
+                        backgroundColor: "#0f1419",
+                        color: "#e6e1dc",
+                        fontFamily:
+                          'Monaco, Menlo, "Ubuntu Mono", "SF Mono", Consolas, monospace',
+                        fontSize: "13px",
+                        lineHeight: "1.6",
                         tabSize: 2,
-                        padding: '16px',
-                        border: '1px solid #3a4b5c',
+                        padding: "16px",
+                        border: "1px solid #3a4b5c",
                       }}
                     />
                     {/* Language indicator */}
                     <div className="absolute top-2 right-2 bg-gray-800 text-gray-300 px-2 py-1 rounded text-xs font-mono">
-                      {PROGRAMMING_LANGUAGES.find(lang => lang.value === codeSnippet.language)?.label}
+                      {
+                        PROGRAMMING_LANGUAGES.find(
+                          (lang) => lang.value === codeSnippet.language
+                        )?.label
+                      }
                     </div>
                   </div>
                   <div className="mt-1 text-xs text-gray-500">
-                    This code will be syntax highlighted when displayed. Use proper indentation for best results.
+                    This code will be syntax highlighted when displayed. Use
+                    proper indentation for best results.
                   </div>
                 </div>
 
                 {/* FIXED: Code Preview with proper language display and syntax highlighting */}
                 <div className="mt-4">
-                  <h5 className="text-xs font-medium text-gray-600 mb-2">Preview:</h5>
+                  <h5 className="text-xs font-medium text-gray-600 mb-2">
+                    Preview:
+                  </h5>
                   <div className="bg-gray-900 rounded-lg overflow-hidden border">
                     <div className="bg-gray-800 px-4 py-2 text-xs text-gray-300 font-medium flex items-center justify-between border-b border-gray-700">
                       <span className="font-mono">
-                        {PROGRAMMING_LANGUAGES.find(lang => lang.value === codeSnippet.language)?.label || 'Code'}
+                        {PROGRAMMING_LANGUAGES.find(
+                          (lang) => lang.value === codeSnippet.language
+                        )?.label || "Code"}
                       </span>
                       <span className="text-gray-400 text-xs">
                         {codeSnippet.description}
                       </span>
                     </div>
                     <pre className="p-4 overflow-x-auto bg-gray-900">
-                      <code 
+                      <code
                         className="text-sm font-mono whitespace-pre block"
                         style={{
-                          color: '#e6e1dc',
-                          fontFamily: 'Monaco, Menlo, "Ubuntu Mono", "SF Mono", Consolas, monospace',
-                          fontSize: '13px',
-                          lineHeight: '1.6',
+                          color: "#e6e1dc",
+                          fontFamily:
+                            'Monaco, Menlo, "Ubuntu Mono", "SF Mono", Consolas, monospace',
+                          fontSize: "13px",
+                          lineHeight: "1.6",
                         }}
                       >
                         {codeSnippet.code}
@@ -985,7 +1174,7 @@ export function SolutionRichTextEditor({
         )}
 
         {/* Links Tab */}
-        {activeTab === 'links' && (
+        {activeTab === "links" && (
           <div className="p-4 space-y-6">
             {/* YouTube Link */}
             <div>
@@ -996,7 +1185,7 @@ export function SolutionRichTextEditor({
               <div className="space-y-2">
                 <input
                   type="url"
-                  value={youtubeLink || ''}
+                  value={youtubeLink || ""}
                   onChange={(e) => onYoutubeLinkChange?.(e.target.value)}
                   onBlur={(e) => {
                     if (e.target.value !== youtubeLink) {
@@ -1007,7 +1196,8 @@ export function SolutionRichTextEditor({
                   placeholder="https://www.youtube.com/watch?v=..."
                 />
                 <div className="text-xs text-gray-500">
-                  Add a YouTube video to help explain the solution. The link will be automatically validated.
+                  Add a YouTube video to help explain the solution. The link
+                  will be automatically validated.
                 </div>
                 {youtubeLink && (
                   <div className="bg-green-50 border border-green-200 rounded p-2">
@@ -1028,7 +1218,7 @@ export function SolutionRichTextEditor({
               <div className="space-y-2">
                 <input
                   type="url"
-                  value={driveLink || ''}
+                  value={driveLink || ""}
                   onChange={(e) => onDriveLinkChange?.(e.target.value)}
                   onBlur={(e) => {
                     if (e.target.value !== driveLink) {
@@ -1039,7 +1229,8 @@ export function SolutionRichTextEditor({
                   placeholder="https://drive.google.com/file/d/..."
                 />
                 <div className="text-xs text-gray-500">
-                  Link to additional resources, documents, or files on Google Drive.
+                  Link to additional resources, documents, or files on Google
+                  Drive.
                 </div>
                 {driveLink && (
                   <div className="bg-green-50 border border-green-200 rounded p-2">
@@ -1054,7 +1245,7 @@ export function SolutionRichTextEditor({
         )}
 
         {/* FIXED: HTML Visualizers Tab with embedded preview */}
-        {activeTab === 'visualizers' && (
+        {activeTab === "visualizers" && (
           <div className="p-4">
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1062,16 +1253,23 @@ export function SolutionRichTextEditor({
                 HTML Visualizers (Max 2 files)
               </label>
               <div className="text-sm text-gray-600 mb-4">
-                Upload interactive HTML files to visualize algorithms. Files will be embedded and displayed within our website.
+                Upload interactive HTML files to visualize algorithms. Files
+                will be embedded and displayed within our website.
               </div>
 
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => htmlFileInputRef.current?.click()}
-                  disabled={disabled || visualizerFileIds.length >= 2 || !solutionId}
+                  disabled={
+                    disabled || visualizerFileIds.length >= 2 || !solutionId
+                  }
                   className="inline-flex items-center px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={!solutionId ? "Save solution first to upload visualizers" : "Upload HTML visualizer"}
+                  title={
+                    !solutionId
+                      ? "Save solution first to upload visualizers"
+                      : "Upload HTML visualizer"
+                  }
                 >
                   <CubeTransparentIcon className="h-4 w-4 mr-2" />
                   Upload HTML File
@@ -1085,14 +1283,17 @@ export function SolutionRichTextEditor({
               </div>
             </div>
 
-            {/* FIXED: Visualizer Files List with embedded preview */}
+            {/* FIXED: Enhanced Visualizer Files List with professional error handling */}
             {visualizerFiles?.data && visualizerFiles.data.length > 0 && (
               <div className="space-y-6">
                 <h4 className="text-sm font-medium text-gray-700">
                   Uploaded Visualizers ({visualizerFiles.data.length}/2)
                 </h4>
                 {visualizerFiles.data.map((file) => (
-                  <div key={file.fileId} className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div
+                    key={file.fileId}
+                    className="border border-gray-200 rounded-lg overflow-hidden"
+                  >
                     {/* File Info Header */}
                     <div className="flex items-center justify-between p-3 bg-gray-50 border-b border-gray-200">
                       <div className="flex items-center space-x-3">
@@ -1102,13 +1303,16 @@ export function SolutionRichTextEditor({
                             {file.originalFileName || file.filename}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {(file.size / 1024).toFixed(1)} KB • Uploaded {new Date(file.uploadDate).toLocaleDateString()}
+                            {(file.size / 1024).toFixed(1)} KB • Uploaded{" "}
+                            {new Date(file.uploadDate).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
                         <a
-                          href={solutionApiService.getVisualizerFileUrl(file.fileId)}
+                          href={solutionApiService.getVisualizerFileUrl(
+                            file.fileId
+                          )}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -1119,7 +1323,12 @@ export function SolutionRichTextEditor({
                         </a>
                         <button
                           type="button"
-                          onClick={() => handleRemoveVisualizerFile(file.fileId)}
+                          onClick={() =>
+                            handleRemoveVisualizerFile(
+                              file.fileId,
+                              file.originalFileName || "Visualizer"
+                            )
+                          }
                           className="inline-flex items-center px-2 py-1 border border-red-300 rounded text-xs font-medium text-red-700 bg-white hover:bg-red-50"
                           title="Delete visualizer"
                         >
@@ -1128,14 +1337,18 @@ export function SolutionRichTextEditor({
                         </button>
                       </div>
                     </div>
-                    
-                    {/* FIXED: Embedded Preview that works within our website */}
+
+                    {/* FIXED: Enhanced Embedded Preview with file-not-found handling */}
                     <div className="p-0">
                       <EmbeddedVisualizer
                         fileId={file.fileId}
-                        title={file.originalFileName || 'Algorithm Visualizer'}
+                        title={file.originalFileName || "Algorithm Visualizer"}
                         height="400px"
-                        onError={(error) => console.error('Visualizer error:', error)}
+                        onError={(error) => {
+                          console.error("Visualizer error:", error);
+                          // Only log errors, don't show toast notifications
+                        }}
+                        onFileNotFound={handleVisualizerFileNotFound}
                       />
                     </div>
                   </div>
@@ -1146,10 +1359,10 @@ export function SolutionRichTextEditor({
             {/* Drag and Drop Zone for HTML files */}
             <div
               className={`mt-4 border-2 border-dashed rounded-lg p-6 text-center ${
-                dragActive && activeTab === 'visualizers'
-                  ? 'border-blue-400 bg-blue-50'
-                  : 'border-gray-300'
-              } ${visualizerFileIds.length >= 2 ? 'opacity-50' : ''}`}
+                dragActive && activeTab === "visualizers"
+                  ? "border-blue-400 bg-blue-50"
+                  : "border-gray-300"
+              } ${visualizerFileIds.length >= 2 ? "opacity-50" : ""}`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
@@ -1158,9 +1371,8 @@ export function SolutionRichTextEditor({
               <CubeTransparentIcon className="mx-auto h-8 w-8 text-gray-400" />
               <p className="mt-2 text-sm text-gray-600">
                 {visualizerFileIds.length >= 2
-                  ? 'Maximum 2 visualizers reached'
-                  : 'Drag and drop HTML files here, or click upload button'
-                }
+                  ? "Maximum 2 visualizers reached"
+                  : "Drag and drop HTML files here, or click upload button"}
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 HTML files only • Max 500KB per file
@@ -1173,7 +1385,7 @@ export function SolutionRichTextEditor({
         {dragActive && (
           <div className="absolute inset-0 bg-blue-100 bg-opacity-75 border-2 border-dashed border-blue-400 flex items-center justify-center z-10">
             <div className="text-center">
-              {activeTab === 'visualizers' ? (
+              {activeTab === "visualizers" ? (
                 <>
                   <CubeTransparentIcon className="mx-auto h-12 w-12 text-blue-600" />
                   <p className="mt-2 text-sm font-medium text-blue-600">
@@ -1231,9 +1443,10 @@ export function SolutionRichTextEditor({
       {/* Help text */}
       <div className="bg-gray-50 border-t border-gray-200 px-3 py-2 text-xs text-gray-500">
         <p>
-          <strong>Solution Editor:</strong> Use tabs to organize content - Text for explanation with images, 
-          Code for syntax-highlighted implementation, Links for external resources, and Visualizers for interactive HTML demos 
-          that run securely within our website.
+          <strong>Solution Editor:</strong> Use tabs to organize content - Text
+          for explanation with images, Code for syntax-highlighted
+          implementation, Links for external resources, and Visualizers for
+          interactive HTML demos that run securely within our website.
         </p>
       </div>
 

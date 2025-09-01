@@ -340,7 +340,7 @@ export function useUploadVisualizerFile() {
       throw new Error(response.message || 'Failed to upload visualizer file');
     },
     onSuccess: () => {
-      toast.success('HTML visualizer uploaded successfully');
+      // toast.success('HTML visualizer uploaded successfully');
     },
     onError: (error: Error) => {
       toast.error(`Failed to upload visualizer: ${error.message}`);
@@ -388,7 +388,7 @@ export function useDeleteVisualizerFile() {
     onSuccess: () => {
       // Invalidate all visualizer queries (both with and without solutionId)
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SOLUTIONS.VISUALIZERS() });
-      toast.success('Visualizer file deleted successfully');
+      // toast.success('Visualizer file deleted successfully');
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete visualizer: ${error.message}`);
