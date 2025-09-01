@@ -1,8 +1,8 @@
-// src/app/admin/users/page.tsx - FIXED API error
+// src/app/admin/users/page.tsx - FIXED API error with search functionality
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import AdminLayout from '@/components/admin/AdminLayout';
 import RoleChangeModal from '@/components/admin/RoleChangeModal';
@@ -14,6 +14,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   FunnelIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useUsers, useUsersByRole, useRolePermissions } from '@/hooks/useUserManagement';
 import { UserRole, UserListItem, User } from '@/types';
@@ -41,16 +43,136 @@ interface UserStatsData {
   superAdmins: number;
 }
 
+function SearchAndFilterBar({
+  searchQuery,
+  onSearchChange,
+  selectedRole,
+  onRoleFilter,
+  totalUsers,
+}: {
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  selectedRole: UserRole | 'ALL';
+  onRoleFilter: (role: UserRole | 'ALL') => void;
+  totalUsers?: number;
+}) {
+  const clearSearch = () => onSearchChange('');
+  const hasActiveFilters = searchQuery || selectedRole !== 'ALL';
+
+  return (
+    <div className="bg-white p-4 rounded-lg shadow border border-gray-200 space-y-4 mb-6">
+      <div className="flex items-center gap-2">
+        <FunnelIcon className="h-5 w-5 text-gray-400" />
+        <h3 className="text-sm font-medium text-gray-900">Search & Filters</h3>
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search by name or email..."
+          className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        />
+        {searchQuery && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+            <button
+              onClick={clearSearch}
+              className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              type="button"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Role Filter Buttons */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <span className="text-sm font-medium text-gray-700">Filter by role:</span>
+          <div className="flex space-x-1">
+            {(['ALL', UserRole.USER, UserRole.ADMIN, UserRole.SUPERADMIN] as const).map((role) => (
+              <button
+                key={role}
+                onClick={() => onRoleFilter(role)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  selectedRole === role
+                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {role === 'ALL' ? 'All Users' : role}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-500">
+            {totalUsers && `${totalUsers} total users`}
+          </span>
+        </div>
+      </div>
+
+      {/* Active Filters Display */}
+      {hasActiveFilters && (
+        <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+          <div className="text-sm text-gray-600 flex items-center space-x-2">
+            {searchQuery && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                Search: {searchQuery}
+                <button
+                  onClick={clearSearch}
+                  className="ml-1 inline-flex items-center justify-center w-4 h-4 text-blue-400 hover:text-blue-600"
+                >
+                  <XMarkIcon className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {selectedRole !== 'ALL' && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                Role: {selectedRole}
+                <button
+                  onClick={() => onRoleFilter('ALL')}
+                  className="ml-1 inline-flex items-center justify-center w-4 h-4 text-purple-400 hover:text-purple-600"
+                >
+                  <XMarkIcon className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              onSearchChange('');
+              onRoleFilter('ALL');
+            }}
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UserTable({ 
   users, 
   isLoading, 
   onRoleChange,
-  currentUser 
+  currentUser,
+  searchQuery
 }: {
   users?: UserListItem[];
   isLoading: boolean;
   onRoleChange: (user: UserListItem) => void;
   currentUser: User | null;
+  searchQuery: string;
 }) {
   if (isLoading) {
     return (
@@ -79,7 +201,12 @@ function UserTable({
         <div className="text-center py-12">
           <UsersIcon className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No users found</h3>
-          <p className="mt-1 text-sm text-gray-500">No users match your current filters.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchQuery 
+              ? `No users match "${searchQuery}". Try adjusting your search.`
+              : "No users match your current filters."
+            }
+          </p>
         </div>
       </div>
     );
@@ -221,6 +348,7 @@ export default function AdminUsersPage() {
   const { user: currentUser, isSuperAdmin } = useAuth();
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedRole, setSelectedRole] = useState<UserRole | 'ALL'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
 
@@ -242,15 +370,30 @@ export default function AdminUsersPage() {
   // FIXED: Properly choose the active query and disable the unused one
   const { data: userPage, isLoading, error } = selectedRole === 'ALL' ? allUsersQuery : filteredUsersQuery;
 
-  // Disable the unused query to prevent unnecessary API calls
-  if (selectedRole === 'ALL') {
-    // The filteredUsersQuery will be disabled by the enabled condition in the hook
-  } else {
-    // The allUsersQuery will continue running but we won't use its data
-  }
-
   // Get role permissions for info display
   const { data: permissions } = useRolePermissions();
+
+  // Client-side search filtering
+  const filteredUsers = useMemo(() => {
+    const allUsers = userPage?.content || [];
+    
+    if (!searchQuery.trim()) {
+      return allUsers;
+    }
+    
+    return allUsers.filter(user => 
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [userPage?.content, searchQuery]);
+
+  // Calculate user stats from filtered results
+  const userStats: UserStatsData | undefined = userPage ? {
+    totalUsers: filteredUsers.length,
+    users: filteredUsers.filter(u => u.role === UserRole.USER).length,
+    admins: filteredUsers.filter(u => u.role === UserRole.ADMIN).length,
+    superAdmins: filteredUsers.filter(u => u.role === UserRole.SUPERADMIN).length,
+  } : undefined;
 
   const handleRoleChange = (user: UserListItem) => {
     setSelectedUser(user);
@@ -271,13 +414,10 @@ export default function AdminUsersPage() {
     setCurrentPage(0); // Reset to first page when filtering
   };
 
-  // Calculate user stats from current page data
-  const userStats: UserStatsData | undefined = userPage ? {
-    totalUsers: userPage.totalElements,
-    users: userPage.content.filter(u => u.role === UserRole.USER).length,
-    admins: userPage.content.filter(u => u.role === UserRole.ADMIN).length,
-    superAdmins: userPage.content.filter(u => u.role === UserRole.SUPERADMIN).length,
-  } : undefined;
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(0); // Reset to first page when searching
+  };
 
   // Don't show if user is not admin
   if (!currentUser || !roleUtils.canAccessAdmin(currentUser)) {
@@ -323,36 +463,25 @@ export default function AdminUsersPage() {
         {/* User Statistics */}
         <UserStats userRoles={userStats} />
 
-        {/* Filters */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <FunnelIcon className="h-5 w-5 text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">Filter by role:</span>
-            </div>
-            <div className="flex space-x-1">
-              {(['ALL', UserRole.USER, UserRole.ADMIN, UserRole.SUPERADMIN] as const).map((role) => (
-                <button
-                  key={role}
-                  onClick={() => handleRoleFilter(role)}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                    selectedRole === role
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {role === 'ALL' ? 'All Users' : role}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Search and Filters */}
+        <SearchAndFilterBar
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
+          selectedRole={selectedRole}
+          onRoleFilter={handleRoleFilter}
+          totalUsers={userPage?.totalElements}
+        />
 
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500">
-              {userPage && `${userPage.totalElements} total users`}
-            </span>
+        {/* Results Summary */}
+        {(searchQuery || selectedRole !== 'ALL') && (
+          <div className="mb-4">
+            <div className="text-sm text-gray-600">
+              Showing {filteredUsers.length} result{filteredUsers.length !== 1 ? 's' : ''} 
+              {searchQuery && ` for "${searchQuery}"`}
+              {selectedRole !== 'ALL' && ` with role ${selectedRole}`}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Error State */}
         {error && (
@@ -365,14 +494,15 @@ export default function AdminUsersPage() {
 
         {/* User Table */}
         <UserTable
-          users={userPage?.content}
+          users={filteredUsers}
           isLoading={isLoading}
           onRoleChange={handleRoleChange}
           currentUser={currentUser}
+          searchQuery={searchQuery}
         />
 
         {/* Pagination */}
-        {userPage && userPage.totalPages > 1 && (
+        {userPage && userPage.totalPages > 1 && !searchQuery && (
           <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-6">
             <div className="flex-1 flex justify-between sm:hidden">
               <button

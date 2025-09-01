@@ -1,4 +1,4 @@
-// src/app/admin/solutions/page.tsx - Complete solutions management page
+// src/app/admin/solutions/page.tsx - Complete solutions management page with search
 
 "use client";
 
@@ -9,7 +9,7 @@ import {
   PencilIcon,
   TrashIcon,
   FunnelIcon,
-  EyeIcon,
+  // EyeIcon,
   CalendarIcon,
   QuestionMarkCircleIcon,
   PhotoIcon,
@@ -17,6 +17,8 @@ import {
   FolderOpenIcon,
   CubeTransparentIcon,
   CodeBracketIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { useQuestions } from "@/hooks/useQuestionManagement";
@@ -27,7 +29,7 @@ import {
 } from "@/components/admin/SolutionModals";
 import { useAuth } from "@/hooks/useAuth";
 import { dateUtils } from "@/lib/utils/common";
-import { solutionApiService } from "@/lib/api/solutionService";
+// import { solutionApiService } from "@/lib/api/solutionService";
 import type {
   Solution,
   SolutionFilters,
@@ -136,66 +138,7 @@ function SolutionCard({ solution }: { solution: Solution }) {
               )}
             </div>
           </div>
-
-          {/* FIXED: Enhanced Visualizer Preview with proper links */}
-          {visualizerCount > 0 && (
-            <div className="mt-3">
-              <div className="text-sm text-gray-600 mb-2 font-medium">
-                Interactive Visualizers ({visualizerCount}):
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {solution.visualizerFileIds?.map((fileId, index) => (
-                  <a
-                    key={fileId}
-                    href={solutionApiService.getVisualizerFileUrl(fileId)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center p-2 border border-purple-200 rounded bg-purple-50 hover:bg-purple-100 transition-colors group"
-                  >
-                    <CubeTransparentIcon className="h-4 w-4 text-purple-600 mr-2" />
-                    <span className="text-sm text-purple-800 flex-1">
-                      HTML Visualizer {index + 1}
-                    </span>
-                    <EyeIcon className="h-3 w-3 text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* FIXED: Enhanced Links Preview */}
-          {(hasYoutube || hasDrive) && (
-            <div className="mt-3">
-              <div className="text-sm text-gray-600 mb-2 font-medium">External Resources:</div>
-              <div className="space-y-1">
-                {hasYoutube && (
-                  <a
-                    href={solution.youtubeLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center p-2 border border-red-200 rounded bg-red-50 hover:bg-red-100 transition-colors group"
-                  >
-                    <PlayIcon className="h-4 w-4 text-red-500 mr-2" />
-                    <span className="text-sm text-red-800 flex-1">YouTube Video</span>
-                    <EyeIcon className="h-3 w-3 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </a>
-                )}
-                {hasDrive && (
-                  <a
-                    href={solution.driveLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center p-2 border border-indigo-200 rounded bg-indigo-50 hover:bg-indigo-100 transition-colors group"
-                  >
-                    <FolderOpenIcon className="h-4 w-4 text-indigo-500 mr-2" />
-                    <span className="text-sm text-indigo-800 flex-1">Google Drive Resources</span>
-                    <EyeIcon className="h-3 w-3 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
-
+ 
           {/* Footer */}
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center justify-between text-sm text-gray-500">
@@ -231,94 +174,81 @@ function SolutionCard({ solution }: { solution: Solution }) {
   );
 }
 
-function FilterBar({
+function SearchAndFilterBar({
   filters,
   onFiltersChange,
-  questions,
+  searchQuery,
+  onSearchChange,
 }: {
   filters: SolutionFilters;
   onFiltersChange: (filters: SolutionFilters) => void;
   questions: Question[];
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }) {
+  const clearSearch = () => onSearchChange("");
+  
+  const hasActiveFilters = searchQuery || filters.questionId || filters.hasImages || 
+    filters.hasVisualizers || filters.hasYoutubeLink || filters.hasDriveLink || filters.creatorId;
+
   return (
     <div className="bg-white p-4 rounded-lg shadow border border-gray-200 space-y-4">
       <div className="flex items-center gap-2">
         <FunnelIcon className="h-5 w-5 text-gray-400" />
-        <h3 className="text-sm font-medium text-gray-900">Filters</h3>
+        <h3 className="text-sm font-medium text-gray-900">Search & Filters</h3>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Question Filter */}
-        <select
-          value={filters.questionId || ""}
-          onChange={(e) =>
-            onFiltersChange({
-              ...filters,
-              questionId: e.target.value || undefined,
-            })
-          }
-          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-        >
-          <option value="">All Questions</option>
-          {questions.map((question) => (
-            <option key={question.id} value={question.id}>
-              {question.title}
-            </option>
-          ))}
-        </select>
-
-        {/* Media Type Filter */}
-        <select
-          value={
-            filters.hasImages ? "images" :
-            filters.hasVisualizers ? "visualizers" :
-            filters.hasYoutubeLink ? "youtube" :
-            filters.hasDriveLink ? "drive" : ""
-          }
-          onChange={(e) => {
-            const value = e.target.value;
-            onFiltersChange({
-              ...filters,
-              hasImages: value === "images" ? true : undefined,
-              hasVisualizers: value === "visualizers" ? true : undefined,
-              hasYoutubeLink: value === "youtube" ? true : undefined,
-              hasDriveLink: value === "drive" ? true : undefined,
-            });
-          }}
-          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-        >
-          <option value="">All Media Types</option>
-          <option value="images">With Images</option>
-          <option value="visualizers">With Visualizers</option>
-          <option value="youtube">With YouTube Videos</option>
-          <option value="drive">With Drive Links</option>
-        </select>
-
-        {/* Creator Filter (placeholder) */}
-        <select
-          value={filters.creatorId || ""}
-          onChange={(e) =>
-            onFiltersChange({
-              ...filters,
-              creatorId: e.target.value || undefined,
-            })
-          }
-          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-        >
-          <option value="">All Creators</option>
-          {/* You can populate this with actual creators if needed */}
-        </select>
+      {/* Search Bar */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search by question title..."
+          className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        />
+        {searchQuery && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+            <button
+              onClick={clearSearch}
+              className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              type="button"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Clear Filters */}
-      {(filters.questionId || filters.hasImages || filters.hasVisualizers || 
-        filters.hasYoutubeLink || filters.hasDriveLink || filters.creatorId) && (
-        <button
-          onClick={() => onFiltersChange({})}
-          className="text-sm text-blue-600 hover:text-blue-800"
-        >
-          Clear all filters
-        </button>
+      {/* Clear All Filters */}
+      {hasActiveFilters && (
+        <div className="flex items-center justify-between pt-2">
+          <div className="text-sm text-gray-600">
+            {searchQuery && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2">
+                Search: {searchQuery}
+                <button
+                  onClick={clearSearch}
+                  className="ml-1 inline-flex items-center justify-center w-4 h-4 text-blue-400 hover:text-blue-600"
+                >
+                  <XMarkIcon className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              onFiltersChange({});
+              onSearchChange("");
+            }}
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            Clear all filters
+          </button>
+        </div>
       )}
     </div>
   );
@@ -394,7 +324,7 @@ function SolutionsGrid({
           No solutions found
         </h3>
         <p className="mt-1 text-sm text-gray-500">
-          Get started by creating your first solution.
+          Try adjusting your search or filters, or create your first solution.
         </p>
       </div>
     );
@@ -412,8 +342,18 @@ function SolutionsGrid({
 export default function AdminSolutionsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filters, setFilters] = useState<SolutionFilters>({});
+  const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(0);
   const pageSize = 20;
+
+  // Reset page when search or filters change
+  const resetPage = () => setPage(0);
+
+  // Filter solutions based on search query (client-side filtering for question title)
+  // const filteredSolutions = useMemo(() => {
+  //   // This will be used if your API doesn't support search, otherwise you can pass searchQuery to API
+  //   return []; // Will be replaced by API results
+  // }, [searchQuery]);
 
   // Convert filters for API call
   const apiParams = useMemo(
@@ -422,6 +362,7 @@ export default function AdminSolutionsPage() {
       size: pageSize,
       questionId: filters.questionId,
       creatorId: filters.creatorId,
+      // If your API supports search, add: search: searchQuery
     }),
     [page, filters]
   );
@@ -435,9 +376,33 @@ export default function AdminSolutionsPage() {
   const { data: stats } = useSolutionStats();
   const { isAdmin } = useAuth();
 
-  const solutions = solutionsData?.content || [];
+  // Client-side search filtering if API doesn't support it
+  const solutions = useMemo(() => {
+    const allSolutions = solutionsData?.content || [];
+    
+    if (!searchQuery.trim()) {
+      return allSolutions;
+    }
+    
+    return allSolutions.filter(solution => 
+      solution.questionTitle.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [solutionsData?.content, searchQuery]);
+
   const questions = questionsData?.content || [];
   const totalPages = solutionsData?.totalPages || 0;
+
+  // Handle search change and reset page
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    resetPage();
+  };
+
+  // Handle filter change and reset page
+  const handleFiltersChange = (newFilters: SolutionFilters) => {
+    setFilters(newFilters);
+    resetPage();
+  };
 
   return (
     <AdminLayout>
@@ -551,14 +516,26 @@ export default function AdminSolutionsPage() {
           </div>
         )}
 
-        {/* Filters */}
+        {/* Search and Filters */}
         <div className="mt-8">
-          <FilterBar
+          <SearchAndFilterBar
             filters={filters}
-            onFiltersChange={setFilters}
+            onFiltersChange={handleFiltersChange}
             questions={questions}
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
           />
         </div>
+
+        {/* Results Summary */}
+        {(searchQuery || Object.keys(filters).some(key => filters[key as keyof SolutionFilters])) && (
+          <div className="mt-4">
+            <div className="text-sm text-gray-600">
+              Showing {solutions.length} result{solutions.length !== 1 ? 's' : ''} 
+              {searchQuery && ` for "${searchQuery}"`}
+            </div>
+          </div>
+        )}
 
         {/* Solutions Grid */}
         <div className="mt-8">
