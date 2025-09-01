@@ -84,16 +84,16 @@ const PROGRAMMING_LANGUAGES = [
   },
 ];
 
-// Helper function to extract all image URLs from markdown content
-function extractImageUrlsFromMarkdown(content: string): string[] {
-  const imageRegex = /!\[.*?\]\((.*?)\)/g;
-  const urls: string[] = [];
-  let match;
-  while ((match = imageRegex.exec(content)) !== null) {
-    urls.push(match[1]);
-  }
-  return urls;
-}
+// // Helper function to extract all image URLs from markdown content
+// function extractImageUrlsFromMarkdown(content: string): string[] {
+//   const imageRegex = /!\[.*?\]\((.*?)\)/g;
+//   const urls: string[] = [];
+//   let match;
+//   while ((match = imageRegex.exec(content)) !== null) {
+//     urls.push(match[1]);
+//   }
+//   return urls;
+// }
 
 interface CodeSnippetsManagerProps {
   codeSnippets: CodeSnippet[];
@@ -330,10 +330,10 @@ export function CreateQuestionModal({
       return;
     }
 
-    const finalImageUrls = extractImageUrlsFromMarkdown(formData.statement);
+    // const finalImageUrls = extractImageUrlsFromMarkdown(formData.statement);
     const submissionData = {
       ...formData,
-      imageUrls: finalImageUrls,
+      // imageUrls: finalImageUrls,
     };
 
     setErrors([]);
@@ -519,7 +519,7 @@ export function CreateQuestionModal({
                           maxLength={QUESTION_VALIDATION.STATEMENT_MAX_LENGTH}
                           uploadedImages={formData.imageUrls || []}
                           onImagesChange={(images) => {
-                            console.log("Images changed:", images); // Add this debug
+                            // console.log("Images changed:", images); // Add this debug
                             updateFormData("imageUrls", images);
                           }}
                         />
@@ -727,10 +727,10 @@ export function EditQuestionModal({
       return;
     }
 
-    const finalImageUrls = extractImageUrlsFromMarkdown(formData.statement);
+    // const finalImageUrls = extractImageUrlsFromMarkdown(formData.statement);
     const submissionData = {
       ...formData,
-      imageUrls: finalImageUrls,
+      // imageUrls: finalImageUrls,
     };
 
     setErrors([]);
@@ -919,7 +919,7 @@ export function EditQuestionModal({
                           maxLength={QUESTION_VALIDATION.STATEMENT_MAX_LENGTH}
                           uploadedImages={formData.imageUrls || []}
                           onImagesChange={(images) => {
-                            console.log("Images changed:", images); // Add this debug
+                            // console.log("Images changed:", images); // Add this debug
                             updateFormData("imageUrls", images);
                           }}
                         />

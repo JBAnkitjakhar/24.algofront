@@ -102,7 +102,7 @@ function SolutionCard({ solution }: { solution: Solution }) {
               {hasCodeSnippet && (
                 <div className="flex items-center text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs">
                   <CodeBracketIcon className="h-3 w-3 mr-1" />
-                  Code: {solution.codeSnippet?.language}
+                  {solution.codeSnippet?.language}
                 </div>
               )}
 
@@ -136,7 +136,7 @@ function SolutionCard({ solution }: { solution: Solution }) {
             </div>
           </div>
 
-          {/* Links Preview */}
+          {/* Links Preview
           {(hasYoutube || hasDrive) && (
             <div className="mt-3 space-y-1">
               {hasYoutube && (
@@ -166,7 +166,7 @@ function SolutionCard({ solution }: { solution: Solution }) {
                 </div>
               )}
             </div>
-          )}
+          )} */}
 
           {/* Visualizer Preview */}
           {visualizerCount > 0 && (

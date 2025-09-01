@@ -28,18 +28,6 @@ import type {
   CreateSolutionRequest,
   UpdateSolutionRequest,
 } from "@/types";
-
-// Helper function to extract all image URLs from markdown content
-function extractImageUrlsFromMarkdown(content: string): string[] {
-  const imageRegex = /!\[.*?\]\((.*?)\)/g;
-  const urls: string[] = [];
-  let match;
-  while ((match = imageRegex.exec(content)) !== null) {
-    urls.push(match[1]);
-  }
-  return urls;
-}
-
 interface CreateSolutionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -69,11 +57,9 @@ export function CreateSolutionModal({
   const questions = questionsData?.content || [];
 
   const handleContentChange = useCallback((value: string) => {
-    const extractedUrls = extractImageUrlsFromMarkdown(value);
     setFormData((prev) => ({
       ...prev,
       content: value,
-      imageUrls: extractedUrls,
     }));
   }, []);
 
@@ -111,10 +97,8 @@ export function CreateSolutionModal({
       return;
     }
 
-    const finalImageUrls = extractImageUrlsFromMarkdown(formData.content);
     const submissionData = {
       ...formData,
-      imageUrls: finalImageUrls,
     };
 
     setErrors([]);
@@ -412,11 +396,9 @@ export function EditSolutionModal({
   }, [solution]);
 
   const handleContentChange = useCallback((value: string) => {
-    const extractedUrls = extractImageUrlsFromMarkdown(value);
     setFormData((prev) => ({
       ...prev,
       content: value,
-      imageUrls: extractedUrls,
     }));
   }, []);
 
@@ -462,10 +444,8 @@ export function EditSolutionModal({
       return;
     }
 
-    const finalImageUrls = extractImageUrlsFromMarkdown(formData.content);
     const submissionData = {
       ...formData,
-      imageUrls: finalImageUrls,
     };
 
     setErrors([]);

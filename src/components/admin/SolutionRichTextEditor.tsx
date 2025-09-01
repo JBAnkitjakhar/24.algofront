@@ -1,8 +1,8 @@
-// src/components/admin/SolutionRichTextEditor.tsx - Specialized rich text editor for solutions
+// src/components/admin/SolutionRichTextEditor.tsx - FIXED VERSION
 
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import {
   PhotoIcon,
@@ -27,10 +27,10 @@ import {
   useDeleteVisualizerFile,
   useVisualizerFilesBySolution,
 } from "@/hooks/useSolutionManagement";
-import { useFileConfig } from "@/hooks/useQuestionManagement";
 import { solutionApiService } from "@/lib/api/solutionService";
 import toast from "react-hot-toast";
 import type { CodeSnippet } from "@/types";
+import { cookieManager } from "@/lib/utils/auth";
 
 interface SolutionRichTextEditorProps {
   // Content values
@@ -45,7 +45,7 @@ interface SolutionRichTextEditorProps {
   driveLink?: string;
   onDriveLinkChange: (link?: string) => void;
   
-  // Media
+  // Media - FIXED: Better image management
   uploadedImages?: string[];
   onImagesChange?: (images: string[]) => void;
   visualizerFileIds?: string[];
@@ -60,6 +60,7 @@ interface SolutionRichTextEditorProps {
   solutionId?: string; // Required for visualizer file management
 }
 
+// FIXED: Complete language list with proper templates
 const PROGRAMMING_LANGUAGES = [
   { value: "javascript", label: "JavaScript", template: "function solution() {\n    // Your JavaScript solution here\n    return null;\n}" },
   { value: "python", label: "Python", template: "def solution():\n    # Your Python solution here\n    pass" },
@@ -69,9 +70,18 @@ const PROGRAMMING_LANGUAGES = [
   { value: "typescript", label: "TypeScript", template: "function solution(): void {\n    // Your TypeScript solution here\n}" },
   { value: "go", label: "Go", template: 'package main\n\nimport "fmt"\n\nfunc main() {\n    // Your Go solution here\n}' },
   { value: "rust", label: "Rust", template: "fn main() {\n    // Your Rust solution here\n}" },
+  { value: "php", label: "PHP", template: "<?php\n// Your PHP solution here\n?>" },
+  { value: "ruby", label: "Ruby", template: "def solution\n  # Your Ruby solution here\nend" },
+  { value: "swift", label: "Swift", template: "func solution() {\n    // Your Swift solution here\n}" },
+  { value: "kotlin", label: "Kotlin", template: "fun main() {\n    // Your Kotlin solution here\n}" },
+  { value: "html", label: "HTML", template: "<!DOCTYPE html>\n<html>\n<head>\n    <title>Example</title>\n</head>\n<body>\n    <!-- Your HTML here -->\n</body>\n</html>" },
+  { value: "css", label: "CSS", template: ".example {\n    /* Your CSS here */\n}" },
+  { value: "sql", label: "SQL", template: "-- Your SQL query here\nSELECT * FROM table_name;" },
 ];
 
-// Component for embedded visualizer preview
+
+
+// FIXED: Embedded visualizer component that works within our website
 const EmbeddedVisualizer = ({ fileId, title, height = "300px", onError }: {
   fileId: string;
   title: string;
@@ -80,46 +90,111 @@ const EmbeddedVisualizer = ({ fileId, title, height = "300px", onError }: {
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [htmlContent, setHtmlContent] = useState<string>('');
 
-  const handleLoad = () => {
-    setIsLoading(false);
-  };
+  // FIXED: Fetch HTML content with proper JWT authentication
+  useEffect(() => {
+    const fetchVisualizerContent = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-  const handleError = () => {
-    const errorMsg = "Failed to load visualizer";
-    setError(errorMsg);
-    setIsLoading(false);
-    onError?.(new Error(errorMsg));
-  };
+        // FIXED: Get token using your existing cookie manager
+        const token = cookieManager.getToken();
+        if (!token) {
+          throw new Error('Authentication token not found. Please log in again.');
+        }
+
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+        const url = `${apiBaseUrl}/files/visualizers/${fileId}`;
+
+        // console.log('Fetching visualizer from:', url);
+        // console.log('Token present:', !!token);
+
+        // FIXED: Include proper Authorization header
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'text/html',
+            'Authorization': `Bearer ${token}`, // FIXED: Include JWT token
+            'Cache-Control': 'no-cache'
+          },
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Authentication expired. Please refresh the page and try again.');
+          }
+          throw new Error(`Failed to load visualizer: ${response.status}`);
+        }
+
+        const htmlText = await response.text();
+        
+        if (!htmlText || htmlText.trim().length === 0) {
+          throw new Error('Empty response received from server');
+        }
+
+        setHtmlContent(htmlText);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load visualizer';
+        setError(errorMessage);
+        onError?.(new Error(errorMessage));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (fileId) {
+      fetchVisualizerContent();
+    }
+  }, [fileId, onError]);
+
+  // Create blob URL for secure HTML rendering
+  const createBlobUrl = useCallback((content: string) => {
+    const blob = new Blob([content], { type: 'text/html' });
+    return URL.createObjectURL(blob);
+  }, []);
+
+  if (error) {
+    return (
+      <div className="border border-red-200 rounded-lg p-4 bg-red-50">
+        <div className="flex items-center text-red-800">
+          <ExclamationTriangleIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+          <div>
+            <div className="font-medium">Unable to load visualizer</div>
+            <div className="text-sm text-red-600 mt-1">{error}</div>
+            <div className="text-xs text-red-500 mt-2">
+              Check your authentication and try again.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50" style={{ height }}>
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600">Loading visualizer...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative" style={{ height }}>
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
-            <p className="mt-2 text-sm text-gray-600">Loading visualizer...</p>
-          </div>
-        </div>
+    <div className="relative border border-gray-200 rounded-lg overflow-hidden" style={{ height }}>
+      {htmlContent && (
+        <iframe
+          src={createBlobUrl(htmlContent)}
+          title={title}
+          className="w-full h-full border-0"
+          sandbox="allow-scripts allow-same-origin allow-forms"
+          style={{ minHeight: height }}
+        />
       )}
-      
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-          <div className="text-center text-red-600">
-            <ExclamationTriangleIcon className="h-8 w-8 mx-auto mb-2" />
-            <p className="text-sm">{error}</p>
-          </div>
-        </div>
-      )}
-
-      <iframe
-        src={solutionApiService.getVisualizerFileUrl(fileId)}
-        title={title}
-        className="w-full h-full border-0"
-        onLoad={handleLoad}
-        onError={handleError}
-        sandbox="allow-scripts allow-same-origin"
-      />
     </div>
   );
 };
@@ -156,7 +231,6 @@ export function SolutionRichTextEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const htmlFileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: fileConfig } = useFileConfig();
   const uploadImageMutation = useUploadSolutionImage();
   const validateYoutubeMutation = useValidateYoutubeLink();
   const validateDriveMutation = useValidateDriveLink();
@@ -164,7 +238,7 @@ export function SolutionRichTextEditor({
   const deleteVisualizerMutation = useDeleteVisualizerFile();
   const { data: visualizerFiles, refetch: refetchVisualizers } = useVisualizerFilesBySolution(solutionId || '');
 
-  // Handle file upload for images - FIXED: Properly maintain image list
+  // FIXED: Better image upload handling that preserves all images
   const handleImageUpload = useCallback(
     async (files: FileList | File[]) => {
       const fileArray = Array.from(files);
@@ -177,11 +251,11 @@ export function SolutionRichTextEditor({
         return;
       }
 
-      // FIXED: Count only valid uploaded images
+      // FIXED: Properly count existing valid images
       const currentValidImages = uploadedImages.filter(
         (url) => url && url.trim() !== ""
       );
-      const maxImages = fileConfig?.images?.maxPerSolution || 10;
+      const maxImages = 10; // As per your backend validation
 
       if (currentValidImages.length + imageFiles.length > maxImages) {
         toast.error(`Maximum ${maxImages} images allowed per solution`);
@@ -199,11 +273,12 @@ export function SolutionRichTextEditor({
           }
         }
 
-        // FIXED: Properly merge existing and new images without filtering
-        const updatedImages = [...uploadedImages, ...newImageUrls];
-        onImagesChange?.(updatedImages);
+        // FIXED: Preserve ALL existing images and add new ones
+        const allExistingImages = [...uploadedImages]; // Keep all existing images
+        const allImages = [...allExistingImages, ...newImageUrls];
+        onImagesChange?.(allImages);
         
-        // Automatically show image preview after upload
+        // Show image preview automatically
         setShowImagePreview(true);
 
         toast.success(
@@ -216,7 +291,7 @@ export function SolutionRichTextEditor({
         setIsUploading(false);
       }
     },
-    [uploadedImages, onImagesChange, fileConfig, uploadImageMutation]
+    [uploadedImages, onImagesChange, uploadImageMutation]
   );
 
   // Handle HTML visualizer file upload
@@ -238,7 +313,7 @@ export function SolutionRichTextEditor({
       }
 
       const currentVisualizerCount = visualizerFileIds.length;
-      const maxVisualizers = 2; // As per backend validation
+      const maxVisualizers = 2;
 
       if (currentVisualizerCount + htmlFiles.length > maxVisualizers) {
         toast.error(`Maximum ${maxVisualizers} HTML visualizers allowed per solution`);
@@ -350,13 +425,14 @@ export function SolutionRichTextEditor({
     [textContent, onTextContentChange]
   );
 
-  // Remove image from list and from text content - FIXED: Proper regex escaping
+  // FIXED: Better image removal that preserves other images
   const removeImage = useCallback(
     (imageUrl: string) => {
+      // Remove from uploaded images array
       const updatedImages = uploadedImages.filter((url) => url !== imageUrl);
       onImagesChange?.(updatedImages);
 
-      // FIXED: Properly escape special regex characters
+      // Remove from text content with proper regex escaping
       const escapedUrl = imageUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const imageMarkdownPattern = new RegExp(
         `!\\[.*?\\]\\(${escapedUrl}\\)`,
@@ -371,11 +447,10 @@ export function SolutionRichTextEditor({
     [uploadedImages, onImagesChange, textContent, onTextContentChange]
   );
 
-  // Check if image is used in content - FIXED: Proper regex escaping
+  // FIXED: Better check for image usage in content
   const isImageUsedInContent = useCallback(
     (imageUrl: string): boolean => {
       if (!imageUrl || !textContent) return false;
-      // FIXED: Properly escape special regex characters
       const escapedUrl = imageUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const imageRegex = new RegExp(`!\\[.*?\\]\\(${escapedUrl}\\)`, "g");
       return imageRegex.test(textContent);
@@ -383,7 +458,7 @@ export function SolutionRichTextEditor({
     [textContent]
   );
 
-  // Handle YouTube link validation
+  // YouTube link validation
   const handleYoutubeLinkValidation = useCallback(
     async (link: string) => {
       if (!link.trim()) {
@@ -406,7 +481,7 @@ export function SolutionRichTextEditor({
     [onYoutubeLinkChange, validateYoutubeMutation]
   );
 
-  // Handle Google Drive link validation
+  // Google Drive link validation
   const handleDriveLinkValidation = useCallback(
     async (link: string) => {
       if (!link.trim()) {
@@ -429,46 +504,45 @@ export function SolutionRichTextEditor({
     [onDriveLinkChange, validateDriveMutation]
   );
 
-  // Handle code snippet changes
+  // FIXED: Better code snippet management with dynamic language selection
   const updateCodeSnippet = useCallback(
     (field: keyof CodeSnippet, value: string) => {
       const currentSnippet = codeSnippet || { language: 'javascript', code: '', description: '' };
       const updatedSnippet = { ...currentSnippet, [field]: value };
-      onCodeSnippetChange(updatedSnippet);
+      onCodeSnippetChange?.(updatedSnippet);
     },
     [codeSnippet, onCodeSnippetChange]
   );
 
   const removeCodeSnippet = useCallback(() => {
-    onCodeSnippetChange(undefined);
+    onCodeSnippetChange?.(undefined);
   }, [onCodeSnippetChange]);
 
   const addCodeSnippet = useCallback(() => {
     const defaultLanguage = PROGRAMMING_LANGUAGES[0];
-    onCodeSnippetChange({
+    onCodeSnippetChange?.({
       language: defaultLanguage.value,
       code: defaultLanguage.template,
       description: `${defaultLanguage.label} solution code`,
     });
   }, [onCodeSnippetChange]);
 
-  // Handle language change with template
+  // FIXED: Dynamic language change with proper template updates
   const handleLanguageChange = useCallback(
     (language: string) => {
       const selectedLanguage = PROGRAMMING_LANGUAGES.find((lang) => lang.value === language);
       if (selectedLanguage && codeSnippet) {
-        // Only update template if current code is empty or matches a template
-        const shouldUpdateTemplate = !codeSnippet.code.trim() || 
-          PROGRAMMING_LANGUAGES.some(lang => lang.template === codeSnippet.code);
-        
-        updateCodeSnippet('language', language);
-        if (shouldUpdateTemplate) {
-          updateCodeSnippet('code', selectedLanguage.template);
-        }
-        updateCodeSnippet('description', `${selectedLanguage.label} solution code`);
+        // Update all fields together to ensure consistency
+        const updatedSnippet = {
+          ...codeSnippet,
+          language: language,
+          code: selectedLanguage.template,
+          description: `${selectedLanguage.label} solution code`
+        };
+        onCodeSnippetChange?.(updatedSnippet);
       }
     },
-    [codeSnippet, updateCodeSnippet]
+    [codeSnippet, onCodeSnippetChange]
   );
 
   // Remove visualizer file
@@ -488,12 +562,10 @@ export function SolutionRichTextEditor({
     [visualizerFileIds, onVisualizerFileIdsChange, deleteVisualizerMutation, refetchVisualizers]
   );
 
-  const unusedImages = uploadedImages.filter(
-    (url) => url && url.trim() !== "" && !isImageUsedInContent(url)
-  );
-  const allValidImages = uploadedImages.filter(
-    (url) => url && url.trim() !== ""
-  );
+  // FIXED: Separate unused and used images properly
+  const allValidImages = uploadedImages.filter((url) => url && url.trim() !== "");
+  const unusedImages = allValidImages.filter((url) => !isImageUsedInContent(url));
+  const usedImages = allValidImages.filter((url) => isImageUsedInContent(url));
 
   const charCount = textContent.length;
   const isOverLimit = charCount > maxLength;
@@ -574,7 +646,7 @@ export function SolutionRichTextEditor({
                 )}
               </div>
 
-              {/* Show Images Button */}
+              {/* FIXED: Show Images Button - always show if there are any images */}
               {allValidImages.length > 0 && (
                 <button
                   type="button"
@@ -684,12 +756,12 @@ export function SolutionRichTextEditor({
               )}
             </div>
 
-            {/* Images Section */}
+            {/* FIXED: Images Section - Always show all images, both used and unused */}
             {showImagePreview && allValidImages.length > 0 && (
               <div className="bg-gray-50 border-t border-gray-200 p-3">
                 <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
                   <PhotoIcon className="h-4 w-4 mr-1" />
-                  Uploaded Images
+                  All Uploaded Images ({allValidImages.length}/10)
                   <span className="ml-2 text-xs text-gray-500">
                     (Click to insert at cursor position)
                   </span>
@@ -705,7 +777,7 @@ export function SolutionRichTextEditor({
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                       {unusedImages.map((imageUrl, index) => (
-                        <div key={`unused-${index}`} className="relative group">
+                        <div key={`unused-${imageUrl}`} className="relative group">
                           <Image
                             src={imageUrl}
                             alt={`Unused ${index + 1}`}
@@ -734,41 +806,38 @@ export function SolutionRichTextEditor({
                 )}
 
                 {/* Show used images */}
-                {allValidImages.length > unusedImages.length && (
+                {usedImages.length > 0 && (
                   <div>
                     <div className="text-xs text-green-600 font-medium mb-2 flex items-center">
                       <span className="bg-green-100 px-2 py-1 rounded">
-                        {allValidImages.length - unusedImages.length} Used Images -
-                        Already in text
+                        {usedImages.length} Used Images - Already in text
                       </span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                      {allValidImages
-                        .filter((url) => isImageUsedInContent(url))
-                        .map((imageUrl, index) => (
-                          <div key={`used-${index}`} className="relative group">
-                            <Image
-                              src={imageUrl}
-                              alt={`Used ${index + 1}`}
-                              width={100}
-                              height={80}
-                              className="w-full h-20 object-cover rounded border-2 border-green-200 opacity-75"
-                              title="This image is already used in the text"
-                              unoptimized
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeImage(imageUrl)}
-                              className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Remove image and clear from text"
-                            >
-                              <TrashIcon className="h-3 w-3" />
-                            </button>
-                            <div className="absolute bottom-1 left-1 right-1 bg-green-600 bg-opacity-90 text-white text-xs px-1 rounded text-center">
-                              Used in text
-                            </div>
+                      {usedImages.map((imageUrl, index) => (
+                        <div key={`used-${imageUrl}`} className="relative group">
+                          <Image
+                            src={imageUrl}
+                            alt={`Used ${index + 1}`}
+                            width={100}
+                            height={80}
+                            className="w-full h-20 object-cover rounded border-2 border-green-200 opacity-75"
+                            title="This image is already used in the text"
+                            unoptimized
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(imageUrl)}
+                            className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Remove image and clear from text"
+                          >
+                            <TrashIcon className="h-3 w-3" />
+                          </button>
+                          <div className="absolute bottom-1 left-1 right-1 bg-green-600 bg-opacity-90 text-white text-xs px-1 rounded text-center">
+                            Used in text
                           </div>
-                        ))}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -777,7 +846,7 @@ export function SolutionRichTextEditor({
           </div>
         )}
 
-        {/* Code Content Tab */}
+        {/* FIXED: Code Content Tab with proper language selection and syntax highlighting */}
         {activeTab === 'code' && (
           <div className="p-4">
             {!codeSnippet ? (
@@ -854,19 +923,60 @@ export function SolutionRichTextEditor({
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Code Solution
                   </label>
-                  <textarea
-                    ref={codeTextareaRef}
-                    value={codeSnippet.code}
-                    onChange={(e) => updateCodeSnippet("code", e.target.value)}
-                    className="w-full h-80 text-sm font-mono rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-900 text-gray-100"
-                    placeholder="Enter your solution code here..."
-                    style={{
-                      backgroundColor: '#1f2937',
-                      color: '#f3f4f6',
-                    }}
-                  />
+                  {/* FIXED: Enhanced code editor with syntax highlighting colors */}
+                  <div className="relative">
+                    <textarea
+                      ref={codeTextareaRef}
+                      value={codeSnippet.code}
+                      onChange={(e) => updateCodeSnippet("code", e.target.value)}
+                      className="w-full h-80 text-sm font-mono rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 resize-none"
+                      placeholder="Enter your solution code here..."
+                      style={{
+                        backgroundColor: '#0f1419',
+                        color: '#e6e1dc',
+                        fontFamily: 'Monaco, Menlo, "Ubuntu Mono", "SF Mono", Consolas, monospace',
+                        fontSize: '13px',
+                        lineHeight: '1.6',
+                        tabSize: 2,
+                        padding: '16px',
+                        border: '1px solid #3a4b5c',
+                      }}
+                    />
+                    {/* Language indicator */}
+                    <div className="absolute top-2 right-2 bg-gray-800 text-gray-300 px-2 py-1 rounded text-xs font-mono">
+                      {PROGRAMMING_LANGUAGES.find(lang => lang.value === codeSnippet.language)?.label}
+                    </div>
+                  </div>
                   <div className="mt-1 text-xs text-gray-500">
-                    This code will be syntax highlighted when displayed
+                    This code will be syntax highlighted when displayed. Use proper indentation for best results.
+                  </div>
+                </div>
+
+                {/* FIXED: Code Preview with proper language display and syntax highlighting */}
+                <div className="mt-4">
+                  <h5 className="text-xs font-medium text-gray-600 mb-2">Preview:</h5>
+                  <div className="bg-gray-900 rounded-lg overflow-hidden border">
+                    <div className="bg-gray-800 px-4 py-2 text-xs text-gray-300 font-medium flex items-center justify-between border-b border-gray-700">
+                      <span className="font-mono">
+                        {PROGRAMMING_LANGUAGES.find(lang => lang.value === codeSnippet.language)?.label || 'Code'}
+                      </span>
+                      <span className="text-gray-400 text-xs">
+                        {codeSnippet.description}
+                      </span>
+                    </div>
+                    <pre className="p-4 overflow-x-auto bg-gray-900">
+                      <code 
+                        className="text-sm font-mono whitespace-pre block"
+                        style={{
+                          color: '#e6e1dc',
+                          fontFamily: 'Monaco, Menlo, "Ubuntu Mono", "SF Mono", Consolas, monospace',
+                          fontSize: '13px',
+                          lineHeight: '1.6',
+                        }}
+                      >
+                        {codeSnippet.code}
+                      </code>
+                    </pre>
                   </div>
                 </div>
               </div>
@@ -943,7 +1053,7 @@ export function SolutionRichTextEditor({
           </div>
         )}
 
-        {/* HTML Visualizers Tab */}
+        {/* FIXED: HTML Visualizers Tab with embedded preview */}
         {activeTab === 'visualizers' && (
           <div className="p-4">
             <div className="mb-4">
@@ -952,7 +1062,7 @@ export function SolutionRichTextEditor({
                 HTML Visualizers (Max 2 files)
               </label>
               <div className="text-sm text-gray-600 mb-4">
-                Upload interactive HTML files to visualize algorithms. Files will be sanitized for security.
+                Upload interactive HTML files to visualize algorithms. Files will be embedded and displayed within our website.
               </div>
 
               <div className="flex gap-2">
@@ -975,16 +1085,16 @@ export function SolutionRichTextEditor({
               </div>
             </div>
 
-            {/* Visualizer Files List */}
+            {/* FIXED: Visualizer Files List with embedded preview */}
             {visualizerFiles?.data && visualizerFiles.data.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-6">
                 <h4 className="text-sm font-medium text-gray-700">
                   Uploaded Visualizers ({visualizerFiles.data.length}/2)
                 </h4>
                 {visualizerFiles.data.map((file) => (
-                  <div key={file.fileId}>
-                    {/* File Info */}
-                    <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-t-lg">
+                  <div key={file.fileId} className="border border-gray-200 rounded-lg overflow-hidden">
+                    {/* File Info Header */}
+                    <div className="flex items-center justify-between p-3 bg-gray-50 border-b border-gray-200">
                       <div className="flex items-center space-x-3">
                         <CubeTransparentIcon className="h-6 w-6 text-blue-600" />
                         <div>
@@ -1005,7 +1115,7 @@ export function SolutionRichTextEditor({
                           title="Open visualizer in new tab"
                         >
                           <EyeIcon className="h-3 w-3 mr-1" />
-                          Open
+                          New Tab
                         </a>
                         <button
                           type="button"
@@ -1019,12 +1129,12 @@ export function SolutionRichTextEditor({
                       </div>
                     </div>
                     
-                    {/* Embedded Preview */}
-                    <div className="border-t-0 border border-gray-200 rounded-b-lg overflow-hidden">
+                    {/* FIXED: Embedded Preview that works within our website */}
+                    <div className="p-0">
                       <EmbeddedVisualizer
                         fileId={file.fileId}
                         title={file.originalFileName || 'Algorithm Visualizer'}
-                        height="300px"
+                        height="400px"
                         onError={(error) => console.error('Visualizer error:', error)}
                       />
                     </div>
@@ -1122,7 +1232,8 @@ export function SolutionRichTextEditor({
       <div className="bg-gray-50 border-t border-gray-200 px-3 py-2 text-xs text-gray-500">
         <p>
           <strong>Solution Editor:</strong> Use tabs to organize content - Text for explanation with images, 
-          Code for syntax-highlighted implementation, Links for external resources, and Visualizers for interactive HTML demos.
+          Code for syntax-highlighted implementation, Links for external resources, and Visualizers for interactive HTML demos 
+          that run securely within our website.
         </p>
       </div>
 

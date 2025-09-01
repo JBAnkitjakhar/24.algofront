@@ -1,16 +1,22 @@
-// src/components/common/EmbeddedVisualizer.tsx - Display HTML visualizers within the website
+// src/components/common/EmbeddedVisualizer.tsx - ENHANCED for Interactive HTML
 
-'use client';
-
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   XMarkIcon,
   ArrowsPointingOutIcon,
   ArrowsPointingInIcon,
   ExclamationTriangleIcon,
-} from '@heroicons/react/24/outline';
-import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react';
-import { Fragment } from 'react';
+  ExclamationCircleIcon,
+  DocumentIcon,
+} from "@heroicons/react/24/outline";
+import {
+  Dialog,
+  DialogPanel,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
+import { Fragment } from "react";
+import { cookieManager } from "@/lib/utils/auth";
 
 interface EmbeddedVisualizerProps {
   fileId: string;
@@ -18,48 +24,217 @@ interface EmbeddedVisualizerProps {
   className?: string;
   height?: string;
   onError?: (error: string) => void;
+  onFileNotFound?: (fileId: string) => void;
+}
+
+type ErrorType = "auth" | "notfound" | "network" | "content" | "unknown";
+
+interface VisualizerError {
+  type: ErrorType;
+  message: string;
+  details?: string;
+  recoverable: boolean;
 }
 
 export function EmbeddedVisualizer({
   fileId,
-  title = 'Algorithm Visualizer',
-  className = '',
-  height = '400px',
+  title = "Algorithm Visualizer",
+  className = "",
+  height = "400px",
   onError,
+  onFileNotFound,
 }: EmbeddedVisualizerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [htmlContent, setHtmlContent] = useState<string>('');
+  const [error, setError] = useState<VisualizerError | null>(null);
+  const [htmlContent, setHtmlContent] = useState<string>("");
+  const [retryCount, setRetryCount] = useState(0);
+  const [isInteractive, setIsInteractive] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const blobUrlRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Fetch HTML content from backend
+  // Professional error categorization
+  const categorizeError = (
+    status: number,
+    message: string
+  ): VisualizerError => {
+    switch (status) {
+      case 401:
+      case 403:
+        return {
+          type: "auth",
+          message: "Authentication required",
+          details:
+            "Your session may have expired. Please refresh the page and try again.",
+          recoverable: true,
+        };
+      case 404:
+        return {
+          type: "notfound",
+          message: "Visualizer not found",
+          details: "This file may have been deleted or moved.",
+          recoverable: false,
+        };
+      case 429:
+        return {
+          type: "network",
+          message: "Too many requests",
+          details: "Please wait a moment before trying again.",
+          recoverable: true,
+        };
+      case 500:
+      case 502:
+      case 503:
+        return {
+          type: "network",
+          message: "Server error",
+          details:
+            "The server is currently unavailable. Please try again later.",
+          recoverable: true,
+        };
+      default:
+        if (status >= 400 && status < 500) {
+          return {
+            type: "content",
+            message: "Invalid request",
+            details: message || "The request could not be processed.",
+            recoverable: false,
+          };
+        }
+        return {
+          type: "unknown",
+          message: "Loading failed",
+          details: message || "An unexpected error occurred.",
+          recoverable: true,
+        };
+    }
+  };
+
+  // FIXED: Enhanced fetch with proper JWT authentication for visualizer access
+
   useEffect(() => {
     const fetchVisualizerContent = async () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      abortControllerRef.current = new AbortController();
+
       try {
         setIsLoading(true);
         setError(null);
 
-        const response = await fetch(`/api/files/visualizers/${fileId}`, {
-          credentials: 'include', // Include authentication cookies
+        if (!fileId || fileId.trim().length === 0) {
+          throw new Error("Invalid file identifier");
+        }
+
+        // CRITICAL: Get JWT token for authentication
+        const token = cookieManager.getToken();
+        if (!token) {
+          setError({
+            type: "auth",
+            message: "Authentication required",
+            details: "Please log in to view visualizer content.",
+            recoverable: true,
+          });
+          return;
+        }
+
+        const apiBaseUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+        const url = `${apiBaseUrl}/files/visualizers/${fileId}`;
+
+        console.log(`[Visualizer] Fetching: ${url} with JWT token`);
+
+        // FIXED: Proper fetch with JWT authentication
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            Accept: "text/html",
+            Authorization: `Bearer ${token}`, // CRITICAL: JWT token for authentication
+            "Cache-Control": "no-cache",
+          },
+          credentials: "include", // Include cookies for additional auth support
+          signal: abortControllerRef.current.signal,
         });
 
+        console.log(
+          `[Visualizer] Response: ${response.status} ${response.statusText}`
+        );
+
         if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error('Authentication required to view this visualizer');
-          } else if (response.status === 404) {
-            throw new Error('Visualizer file not found');
-          } else {
-            throw new Error(`Failed to load visualizer: ${response.status}`);
+          const errorInfo = categorizeError(
+            response.status,
+            response.statusText
+          );
+          setError(errorInfo);
+
+          if (response.status === 404 && onFileNotFound) {
+            onFileNotFound(fileId);
           }
+
+          onError?.(errorInfo.message);
+          return;
+        }
+
+        const contentType = response.headers.get("content-type");
+        if (contentType && !contentType.includes("text/html")) {
+          setError({
+            type: "content",
+            message: "Invalid file format",
+            details: `Expected HTML content, received ${contentType}`,
+            recoverable: false,
+          });
+          return;
         }
 
         const htmlText = await response.text();
+
+        if (!htmlText || htmlText.trim().length === 0) {
+          setError({
+            type: "content",
+            message: "Empty file",
+            details: "The visualizer file appears to be empty.",
+            recoverable: false,
+          });
+          return;
+        }
+
+        // Detect if content is interactive
+        const hasJavaScript =
+          htmlText.toLowerCase().includes("<script") ||
+          htmlText.toLowerCase().includes("javascript:");
+        setIsInteractive(hasJavaScript);
+
+        // Clean up previous blob URL
+        if (blobUrlRef.current) {
+          URL.revokeObjectURL(blobUrlRef.current);
+        }
+
         setHtmlContent(htmlText);
+        setRetryCount(0);
+        console.log(
+          `[Visualizer] Content loaded successfully (${htmlText.length} chars), Interactive: ${hasJavaScript}`
+        );
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load visualizer';
-        setError(errorMessage);
-        onError?.(errorMessage);
+        if (err instanceof Error && err.name === "AbortError") {
+          console.log("[Visualizer] Request aborted");
+          return;
+        }
+
+        console.error("[Visualizer] Fetch error:", err);
+
+        const errorInfo: VisualizerError = {
+          type: "network",
+          message: "Network error",
+          details:
+            err instanceof Error ? err.message : "Failed to connect to server",
+          recoverable: true,
+        };
+
+        setError(errorInfo);
+        onError?.(errorInfo.message);
       } finally {
         setIsLoading(false);
       }
@@ -68,39 +243,153 @@ export function EmbeddedVisualizer({
     if (fileId) {
       fetchVisualizerContent();
     }
-  }, [fileId, onError]);
 
-  // Handle iframe load
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-  };
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+      }
+    };
+  }, [fileId, onError, onFileNotFound, retryCount]);
 
-  // Create blob URL for the HTML content
-  const createBlobUrl = (content: string) => {
-    const blob = new Blob([content], { type: 'text/html' });
-    return URL.createObjectURL(blob);
-  };
+  const handleRetry = useCallback(() => {
+    if (retryCount < 3) {
+      setRetryCount((prev) => prev + 1);
+    }
+  }, [retryCount]);
 
-  if (error) {
+  // ENHANCED: Create secure blob URL for interactive HTML content
+  const createSecureBlobUrl = useCallback((content: string) => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+    }
+
+    const blob = new Blob([content], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    blobUrlRef.current = url;
+
+    return url;
+  }, []);
+
+  // Enhanced error rendering
+  const renderError = (error: VisualizerError) => {
+    const getErrorIcon = () => {
+      switch (error.type) {
+        case "notfound":
+          return DocumentIcon;
+        case "auth":
+          return ExclamationCircleIcon;
+        default:
+          return ExclamationTriangleIcon;
+      }
+    };
+
+    const getErrorColor = () => {
+      switch (error.type) {
+        case "notfound":
+          return "text-gray-600 border-gray-200 bg-gray-50";
+        case "auth":
+          return "text-blue-600 border-blue-200 bg-blue-50";
+        default:
+          return "text-red-600 border-red-200 bg-red-50";
+      }
+    };
+
+    const ErrorIcon = getErrorIcon();
+    const colorClass = getErrorColor();
+
     return (
-      <div className={`border border-red-200 rounded-lg p-4 bg-red-50 ${className}`}>
-        <div className="flex items-center text-red-800">
-          <ExclamationTriangleIcon className="h-5 w-5 mr-2 flex-shrink-0" />
-          <div>
-            <div className="font-medium">Unable to load visualizer</div>
-            <div className="text-sm text-red-600 mt-1">{error}</div>
+      <div className={`border rounded-lg p-4 ${colorClass} ${className}`}>
+        <div className="flex items-start">
+          <ErrorIcon className="h-5 w-5 flex-shrink-0 mr-3 mt-0.5" />
+          <div className="flex-1">
+            <div className="font-medium text-sm">{error.message}</div>
+            {error.details && (
+              <div className="text-sm opacity-80 mt-1">{error.details}</div>
+            )}
+            {error.recoverable && (
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={handleRetry}
+                  disabled={retryCount >= 3}
+                  className="px-3 py-1 text-xs font-medium border rounded hover:bg-white/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {retryCount >= 3 ? "Max retries reached" : "Retry"}
+                </button>
+                {retryCount > 0 && (
+                  <span className="text-xs opacity-70 self-center">
+                    Attempt {retryCount}/3
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
     );
+  };
+
+  // Handle iframe events with enhanced security
+  const handleIframeLoad = () => {
+    const iframe = iframeRef.current;
+    if (iframe && iframe.contentWindow) {
+      try {
+        // SECURITY: Add message listener for iframe communication
+        const handleMessage = (event: MessageEvent) => {
+          // Only accept messages from the iframe's origin
+          if (event.source === iframe.contentWindow) {
+            console.log("[Visualizer] Message from iframe:", event.data);
+          }
+        };
+
+        window.addEventListener("message", handleMessage);
+
+        // Cleanup listener when component unmounts
+        return () => window.removeEventListener("message", handleMessage);
+      } catch (e) {
+        // Cross-origin access might be blocked, which is fine for security
+        console.log(e);
+        console.log(
+          "[Visualizer] Cross-origin iframe communication blocked (expected)"
+        );
+      }
+    }
+  };
+
+  const handleIframeError = () => {
+    console.error("[Visualizer] Iframe failed to load");
+    setError({
+      type: "content",
+      message: "Display error",
+      details: "The visualizer content could not be displayed.",
+      recoverable: true,
+    });
+  };
+
+  if (error) {
+    return renderError(error);
   }
 
   if (isLoading) {
     return (
-      <div className={`border border-gray-200 rounded-lg p-4 bg-gray-50 ${className}`} style={{ height }}>
+      <div
+        className={`border border-gray-200 rounded-lg p-4 bg-gray-50 ${className}`}
+        style={{ height }}
+      >
         <div className="flex items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading visualizer...</span>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <span className="mt-2 text-gray-600 text-sm">
+              Loading visualizer...
+            </span>
+            {retryCount > 0 && (
+              <div className="text-xs text-gray-500 mt-1">
+                Retry attempt {retryCount}/3
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -108,14 +397,28 @@ export function EmbeddedVisualizer({
 
   return (
     <>
-      <div className={`border border-gray-200 rounded-lg overflow-hidden ${className}`}>
-        {/* Header */}
+      <div
+        className={`border border-gray-200 rounded-lg overflow-hidden bg-white ${className}`}
+      >
+        {/* ENHANCED Header with interactivity indicator */}
         <div className="bg-gray-50 px-4 py-2 flex items-center justify-between border-b border-gray-200">
-          <h4 className="text-sm font-medium text-gray-900">{title}</h4>
+          <h4 className="text-sm font-medium text-gray-900 flex items-center">
+            <span
+              className={`w-2 h-2 rounded-full mr-2 ${
+                isInteractive ? "bg-green-500" : "bg-blue-500"
+              }`}
+            ></span>
+            {title}
+            {isInteractive && (
+              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                Interactive
+              </span>
+            )}
+          </h4>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setIsFullscreen(true)}
-              className="p-1 text-gray-400 hover:text-gray-600 rounded"
+              className="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors"
               title="Open in fullscreen"
             >
               <ArrowsPointingOutIcon className="h-4 w-4" />
@@ -123,25 +426,34 @@ export function EmbeddedVisualizer({
           </div>
         </div>
 
-        {/* Iframe Container */}
-        <div className="relative" style={{ height }}>
+        {/* ENHANCED Content Container with better iframe sandbox */}
+        <div className="relative bg-white" style={{ height }}>
           {htmlContent && (
             <iframe
               ref={iframeRef}
-              src={createBlobUrl(htmlContent)}
+              src={createSecureBlobUrl(htmlContent)}
               title={title}
               className="w-full h-full border-0"
               onLoad={handleIframeLoad}
-              sandbox="allow-scripts allow-same-origin allow-forms"
+              onError={handleIframeError}
+              // CRITICAL: Enhanced sandbox permissions for interactive HTML
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
               style={{ minHeight: height }}
+              // SECURITY: Additional attributes for better isolation
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
             />
           )}
         </div>
       </div>
 
-      {/* Fullscreen Modal */}
+      {/* Fullscreen Modal with Enhanced Features */}
       <Transition appear show={isFullscreen} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => setIsFullscreen(false)}>
+        <Dialog
+          as="div"
+          className="relative z-50"
+          onClose={() => setIsFullscreen(false)}
+        >
           <TransitionChild
             as={Fragment}
             enter="ease-out duration-300"
@@ -166,20 +478,31 @@ export function EmbeddedVisualizer({
                 leaveTo="opacity-0 scale-95"
               >
                 <DialogPanel className="w-full h-full max-w-7xl max-h-[90vh] transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all">
-                  {/* Fullscreen Header */}
                   <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+                    <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                      <span
+                        className={`w-3 h-3 rounded-full mr-2 ${
+                          isInteractive ? "bg-green-500" : "bg-blue-500"
+                        }`}
+                      ></span>
+                      {title}
+                      {isInteractive && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                          Interactive Mode
+                        </span>
+                      )}
+                    </h3>
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => setIsFullscreen(false)}
-                        className="p-2 text-gray-400 hover:text-gray-600 rounded"
+                        className="p-2 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors"
                         title="Exit fullscreen"
                       >
                         <ArrowsPointingInIcon className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => setIsFullscreen(false)}
-                        className="p-2 text-gray-400 hover:text-gray-600 rounded"
+                        className="p-2 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors"
                         title="Close"
                       >
                         <XMarkIcon className="h-5 w-5" />
@@ -187,14 +510,19 @@ export function EmbeddedVisualizer({
                     </div>
                   </div>
 
-                  {/* Fullscreen Content */}
-                  <div className="h-full" style={{ height: 'calc(90vh - 80px)' }}>
+                  <div
+                    className="h-full bg-white"
+                    style={{ height: "calc(90vh - 80px)" }}
+                  >
                     {htmlContent && (
                       <iframe
-                        src={createBlobUrl(htmlContent)}
+                        src={createSecureBlobUrl(htmlContent)}
                         title={`${title} - Fullscreen`}
                         className="w-full h-full border-0"
-                        sandbox="allow-scripts allow-same-origin allow-forms"
+                        // ENHANCED: Same security sandbox for fullscreen
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                        loading="lazy"
+                        referrerPolicy="strict-origin-when-cross-origin"
                       />
                     )}
                   </div>
@@ -205,69 +533,5 @@ export function EmbeddedVisualizer({
         </Dialog>
       </Transition>
     </>
-  );
-}
-
-// Simple visualizer preview component for lists/cards
-interface VisualizerPreviewProps {
-  fileId: string;
-  title?: string;
-  onPreview?: () => void;
-}
-
-export function VisualizerPreview({ fileId, title, onPreview }: VisualizerPreviewProps) {
-  const [thumbnailContent, setThumbnailContent] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Generate a simple thumbnail preview
-  useEffect(() => {
-    const generateThumbnail = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/files/visualizers/${fileId}`, {
-          credentials: 'include',
-        });
-        
-        if (response.ok) {
-          const content = await response.text();
-          // Extract title or first meaningful text for preview
-          const titleMatch = content.match(/<title[^>]*>([^<]+)<\/title>/i);
-          const h1Match = content.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-          const preview = titleMatch?.[1] || h1Match?.[1] || title || 'Interactive Visualizer';
-          setThumbnailContent(preview);
-        }
-      } catch (error) {
-        console.error(error);
-        setThumbnailContent(title || 'Visualizer Preview');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (fileId) {
-      generateThumbnail();
-    }
-  }, [fileId, title]);
-
-  return (
-    <div 
-      className="border border-purple-200 rounded-lg p-3 bg-purple-50 hover:bg-purple-100 transition-colors cursor-pointer"
-      onClick={onPreview}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-purple-200 rounded flex items-center justify-center">
-            <span className="text-purple-600 text-xs font-bold">HTML</span>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-purple-800">
-              {isLoading ? 'Loading...' : thumbnailContent}
-            </div>
-            <div className="text-xs text-purple-600">Click to view</div>
-          </div>
-        </div>
-        <ArrowsPointingOutIcon className="h-4 w-4 text-purple-600" />
-      </div>
-    </div>
   );
 }

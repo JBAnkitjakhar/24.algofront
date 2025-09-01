@@ -1,4 +1,5 @@
 // src/store/slices/authSlice.ts
+
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { User, AuthState, UserRole } from '@/types';
 import { cookieManager } from '@/lib/utils/auth';

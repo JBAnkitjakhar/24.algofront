@@ -101,8 +101,8 @@ export function RichTextEditor({
       try {
         for (const file of imageFiles) {
           const result = await uploadImageMutation.mutateAsync(file);
-          console.log("Upload result:", result); // Add this line
-          console.log("Secure URL:", result.secure_url); // Add this line
+          // console.log("Upload result:", result); // Add this line
+          // console.log("Secure URL:", result.secure_url); // Add this line
           if (result.secure_url) {
             newImageUrls.push(result.secure_url);
           } else {
@@ -262,18 +262,18 @@ export function RichTextEditor({
   );
 
   // DEBUG: Console logging for debugging
-  console.log("RichTextEditor Debug:", {
-    uploadedImages: allValidImages,
-    value: value.substring(0, 200) + (value.length > 200 ? "..." : ""),
-    unusedImages,
-    allValidImagesCount: allValidImages.length,
-    unusedImagesCount: unusedImages.length,
-    isImageUsedCheck: allValidImages.map((url) => ({
-      url: url.substring(url.lastIndexOf("/") + 1),
-      isUsed: isImageUsedInContent(url),
-      foundInText: value.includes(url),
-    })),
-  });
+  // console.log("RichTextEditor Debug:", {
+  //   uploadedImages: allValidImages,
+  //   value: value.substring(0, 200) + (value.length > 200 ? "..." : ""),
+  //   unusedImages,
+  //   allValidImagesCount: allValidImages.length,
+  //   unusedImagesCount: unusedImages.length,
+  //   isImageUsedCheck: allValidImages.map((url) => ({
+  //     url: url.substring(url.lastIndexOf("/") + 1),
+  //     isUsed: isImageUsedInContent(url),
+  //     foundInText: value.includes(url),
+  //   })),
+  // });
 
   // Character count
   const charCount = value.length;
