@@ -1,4 +1,4 @@
-// src/constants/index.ts - Updated to include solution constants
+// src/constants/index.ts - Updated with compiler endpoints
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api';
 
@@ -47,7 +47,7 @@ export const QUESTION_ENDPOINTS = {
   STATS: `${API_BASE_URL}/questions/stats`,
 } as const;
 
-// ADDED: Solution management endpoints
+// Solution management endpoints
 export const SOLUTION_ENDPOINTS = {
   LIST: `${API_BASE_URL}/solutions`,
   GET_BY_ID: (id: string) => `${API_BASE_URL}/solutions/${id}`,
@@ -71,6 +71,14 @@ export const SOLUTION_ENDPOINTS = {
   REMOVE_VISUALIZER: (id: string) => `${API_BASE_URL}/solutions/${id}/visualizers`,
 } as const;
 
+// ADDED: Compiler endpoints
+export const COMPILER_ENDPOINTS = {
+  EXECUTE: `${API_BASE_URL}/compiler/execute`,
+  RUNTIMES: `${API_BASE_URL}/compiler/runtimes`,
+  LANGUAGES: `${API_BASE_URL}/compiler/languages`,
+  HEALTH: `${API_BASE_URL}/compiler/health`,
+} as const;
+
 // File upload endpoints
 export const FILE_ENDPOINTS = {
   CONFIG: `${API_BASE_URL}/files/config`,
@@ -78,7 +86,7 @@ export const FILE_ENDPOINTS = {
   UPLOAD_SOLUTION_IMAGE: `${API_BASE_URL}/files/images/solutions`,
   DELETE_IMAGE: `${API_BASE_URL}/files/images`,
   HEALTH_CHECK: `${API_BASE_URL}/files/health/cloudinary`,
-  // ADDED: Visualizer endpoints
+  // Visualizer endpoints
   UPLOAD_VISUALIZER: (solutionId: string) => `${API_BASE_URL}/files/visualizers/${solutionId}`,
   GET_VISUALIZER: (fileId: string) => `${API_BASE_URL}/files/visualizers/${fileId}`,
   DELETE_VISUALIZER: (fileId: string) => `${API_BASE_URL}/files/visualizers/${fileId}`,
@@ -93,6 +101,9 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   ADMIN: '/admin',
   QUESTIONS: '/questions',
+  CATEGORIES: '/categories',
+  COMPILER: '/compiler',
+  USER_PROGRESS: '/userprogress',
   PROFILE: '/profile',
 } as const;
 
@@ -170,7 +181,6 @@ export const QUERY_KEYS = {
     SEARCH: (query: string) => ['questions', 'search', query] as const,
     BY_CATEGORY: (categoryId: string) => ['questions', 'category', categoryId] as const,
   },
-  // ADDED: Solution query keys
   SOLUTIONS: {
     LIST: ['solutions', 'list'] as const,
     DETAIL: (id: string) => ['solutions', 'detail', id] as const,
@@ -178,6 +188,12 @@ export const QUERY_KEYS = {
     BY_CREATOR: (creatorId: string) => ['solutions', 'creator', creatorId] as const,
     STATS: ['solutions', 'stats'] as const,
     VISUALIZERS: (solutionId?: string) => solutionId ? ['solutions', 'visualizers', solutionId] as const : ['solutions', 'visualizers'] as const,
+  },
+  // ADDED: Compiler query keys
+  COMPILER: {
+    RUNTIMES: ['compiler', 'runtimes'] as const,
+    LANGUAGES: ['compiler', 'languages'] as const,
+    HEALTH: ['compiler', 'health'] as const,
   },
   FILES: {
     CONFIG: ['files', 'config'] as const,
@@ -195,7 +211,7 @@ export const QUESTION_VALIDATION = {
   MAX_CODE_SNIPPETS: 10,
 } as const;
 
-// ADDED: Solution validation constants
+// Solution validation constants
 export const SOLUTION_VALIDATION = {
   CONTENT_MIN_LENGTH: 20,
   CONTENT_MAX_LENGTH: 15000,
@@ -203,6 +219,13 @@ export const SOLUTION_VALIDATION = {
   MAX_VISUALIZERS_PER_SOLUTION: 2,
   CODE_MAX_LENGTH: 10000,
   DESCRIPTION_MAX_LENGTH: 200,
+} as const;
+
+// ADDED: Compiler validation constants
+export const COMPILER_VALIDATION = {
+  CODE_MAX_LENGTH: 50000,
+  INPUT_MAX_LENGTH: 10000,
+  MAX_EXECUTION_TIME: 30000, // 30 seconds
 } as const;
 
 // Question level display labels
