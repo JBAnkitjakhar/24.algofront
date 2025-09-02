@@ -2,12 +2,13 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Editor } from '@monaco-editor/react';
 import { Play, RotateCcw, Download, Copy, Check, ZoomIn, ZoomOut, Palette } from 'lucide-react';
 import { Language, SUPPORTED_LANGUAGES, getDefaultLanguage } from '@/lib/compiler/languages';
 import { LanguageSelector } from './LanguageSelector';
 import { useCodeExecution } from '@/hooks/useCodeExecution';
+import type { editor } from 'monaco-editor';
 
 // Monaco Editor Themes
 const MONACO_THEMES = [
@@ -192,11 +193,41 @@ export const CompilerLayout: React.FC = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [mobileView, setMobileView] = useState<'editor' | 'input' | 'output'>('editor');
 
+  // FIXED: Add refs for Monaco Editor management
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isResizingRef = useRef(false);
+
   const { mutate: executeCode, isPending, error } = useCodeExecution();
 
   // Local storage keys for persistence
   const getStorageKey = (language: string, type: 'code' | 'input') => 
     `compiler_${language}_${type}`;
+
+  // FIXED: Debounced resize function to prevent Monaco Editor errors
+  const debouncedResizeEditor = useCallback(() => {
+    if (resizeTimeoutRef.current) {
+      clearTimeout(resizeTimeoutRef.current);
+    }
+
+    resizeTimeoutRef.current = setTimeout(() => {
+      if (editorRef.current && !isResizingRef.current) {
+        try {
+          // Use requestAnimationFrame to ensure DOM has updated
+          requestAnimationFrame(() => {
+            try {
+              editorRef.current?.layout();
+            } catch (error) {
+              console.warn('Monaco Editor layout error (safe to ignore):', error);
+            }
+          });
+        } catch (error) {
+          console.warn('Monaco Editor resize error (safe to ignore):', error);
+        }
+      }
+      isResizingRef.current = false;
+    }, 150); // Increased debounce time for stability
+  }, []);
 
   // Handle resizing for left panel (desktop only)
   const handleLeftPanelMouseDown = useCallback((e: React.MouseEvent) => {
@@ -204,6 +235,7 @@ export const CompilerLayout: React.FC = () => {
     e.preventDefault();
     e.stopPropagation();
     
+    isResizingRef.current = true;
     const startX = e.clientX;
     const startWidth = leftPanelWidth;
 
@@ -214,10 +246,7 @@ export const CompilerLayout: React.FC = () => {
       const deltaPercent = (deltaX / containerWidth) * 100;
       const newWidth = Math.min(Math.max(startWidth + deltaPercent, 25), 85);
       
-      // Debounce the resize to prevent rapid updates that can cause Monaco errors
-      requestAnimationFrame(() => {
-        setLeftPanelWidth(newWidth);
-      });
+      setLeftPanelWidth(newWidth);
     };
 
     const handleMouseUp = (e: MouseEvent) => {
@@ -227,17 +256,17 @@ export const CompilerLayout: React.FC = () => {
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
       
-      // Force Monaco Editor to recalculate layout after resize is complete
+      // FIXED: Call debounced resize after mouse up
       setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-      }, 100);
+        debouncedResizeEditor();
+      }, 50);
     };
 
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'col-resize';
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [leftPanelWidth, isMobile]);
+  }, [leftPanelWidth, isMobile, debouncedResizeEditor]);
 
   // Handle resizing for input/output panels (desktop only)
   const handleInputOutputMouseDown = useCallback((e: React.MouseEvent) => {
@@ -287,6 +316,9 @@ export const CompilerLayout: React.FC = () => {
     const cleanup = () => {
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
     };
     
     window.addEventListener('beforeunload', cleanup);
@@ -297,6 +329,19 @@ export const CompilerLayout: React.FC = () => {
       cleanup();
     };
   }, []);
+
+  // FIXED: Handle window resize to update Monaco Editor
+  useEffect(() => {
+    const handleWindowResize = () => {
+      debouncedResizeEditor();
+    };
+
+    window.addEventListener('resize', handleWindowResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleWindowResize);
+    };
+  }, [debouncedResizeEditor]);
 
   // Load saved preferences
   useEffect(() => {
@@ -540,6 +585,40 @@ export const CompilerLayout: React.FC = () => {
 
   const decreaseFontSize = () => {
     setFontSize(prev => Math.max(prev - 2, 12));
+  };
+
+  // FIXED: Monaco Editor mount handler with proper error handling
+  const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor) => {
+    try {
+      editorRef.current = editor;
+      
+      // Initial layout
+      setTimeout(() => {
+        try {
+          editor.layout();
+        } catch (error) {
+          console.warn('Initial Monaco layout error (safe to ignore):', error);
+        }
+      }, 100);
+
+    } catch (error) {
+      console.warn('Monaco Editor mount error (safe to ignore):', error);
+    }
+  };
+
+  // FIXED: Monaco Editor beforeMount with proper error handling
+  const handleEditorWillMount = (monaco: typeof import('monaco-editor')) => {
+    try {
+      Object.entries(customThemes).forEach(([name, theme]) => {
+        try {
+          monaco.editor.defineTheme(name, theme);
+        } catch (error) {
+          console.warn(`Failed to define theme ${name} (safe to ignore):`, error);
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to define custom themes (safe to ignore):', error);
+    }
   };
 
   return (
@@ -793,23 +872,8 @@ export const CompilerLayout: React.FC = () => {
                   value={code}
                   onChange={(value) => setCode(value || '')}
                   theme={editorTheme}
-                  beforeMount={(monaco) => {
-                    try {
-                      Object.entries(customThemes).forEach(([name, theme]) => {
-                        monaco.editor.defineTheme(name, theme);
-                      });
-                    } catch (error) {
-                      console.warn('Failed to define custom themes:', error);
-                    }
-                  }}
-                  onMount={(editor) => {
-                    try {
-                      // Ensure editor is properly initialized
-                      editor.layout();
-                    } catch (error) {
-                      console.warn('Editor mount error:', error);
-                    }
-                  }}
+                  beforeMount={handleEditorWillMount}
+                  onMount={handleEditorDidMount}
                   options={{
                     fontSize: Math.max(fontSize, 12),
                     minimap: { enabled: false },
@@ -893,11 +957,8 @@ export const CompilerLayout: React.FC = () => {
                 value={code}
                 onChange={(value) => setCode(value || '')}
                 theme={editorTheme}
-                beforeMount={(monaco) => {
-                  Object.entries(customThemes).forEach(([name, theme]) => {
-                    monaco.editor.defineTheme(name, theme);
-                  });
-                }}
+                beforeMount={handleEditorWillMount}
+                onMount={handleEditorDidMount}
                 options={{
                   fontSize: fontSize,
                   minimap: { enabled: false },
