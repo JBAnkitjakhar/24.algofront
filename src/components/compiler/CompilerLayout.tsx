@@ -1,4 +1,4 @@
-// src/components/compiler/CompilerLayout.tsx - FIXED language switching issue
+// src/components/compiler/CompilerLayout.tsx  
 
 "use client";
 

@@ -1,4 +1,4 @@
-// src/lib/api/compilerService.ts - Fixed to handle nested response structure
+// src/lib/api/compilerService.ts  
 
 import { apiClient } from './client';
 import { ApiResponse } from '@/types';
