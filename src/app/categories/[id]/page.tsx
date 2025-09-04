@@ -1,4 +1,4 @@
-// src/app/categories/[id]/page.tsx
+// src/app/categories/[id]/page.tsx - COMPLETE with real user progress data
 
 'use client';
 
@@ -17,6 +17,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useCategoryById, useCategoryStats } from '@/hooks/useCategoryManagement';
+import { useCategoryProgress, useMultipleQuestionProgress } from '@/hooks/useUserProgress';
 import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
 import type { QuestionLevel } from '@/types';
@@ -47,6 +48,9 @@ function CategoryDetailContent() {
   const { data: category, isLoading: categoryLoading } = useCategoryById(categoryId);
   const { data: categoryStats } = useCategoryStats(categoryId);
   
+  // REAL DATA: Get user's actual progress for this category
+  const { data: userCategoryProgress } = useCategoryProgress(categoryId);
+  
   const questionParams = useMemo(() => ({
     page,
     size: pageSize,
@@ -64,12 +68,12 @@ function CategoryDetailContent() {
   const questions = questionsData?.content || [];
   const totalPages = questionsData?.totalPages || 0;
 
+  // REAL DATA: Get solved status for all questions in this page
+  const questionIds = questions.map(q => q.id);
+  const { data: questionsProgress } = useMultipleQuestionProgress(questionIds);
+
   const getDifficultyColor = (difficulty: QuestionLevel) => {
     return QUESTION_LEVEL_COLORS[difficulty];
-  };
-
-  const getProgressPercentage = (solved: number, total: number) => {
-    return total > 0 ? Math.round((solved / total) * 100) : 0;
   };
 
   const handleQuestionClick = (questionId: string) => {
@@ -112,11 +116,10 @@ function CategoryDetailContent() {
   const totalQuestions = categoryStats?.totalQuestions || 0;
   const questionsByLevel = categoryStats?.questionsByLevel || { easy: 0, medium: 0, hard: 0 };
   
-  // Mock user progress data - replace with real data when user progress is implemented
-  const userProgress = {
-    solved: Math.floor(totalQuestions * 0.3), // 30% solved as example
-  };
-  const progressPercentage = getProgressPercentage(userProgress.solved, totalQuestions);
+  // REAL DATA: Use actual user progress instead of mock data
+  const solvedQuestions = userCategoryProgress?.solvedInCategory || 0;
+  const progressPercentage = userCategoryProgress?.categoryProgressPercentage || 0;
+  const solvedByLevel = userCategoryProgress?.solvedByLevel || { easy: 0, medium: 0, hard: 0 };
 
   return (
     <UserLayout>
@@ -148,7 +151,7 @@ function CategoryDetailContent() {
                 Master {category.name.toLowerCase()} problems step by step
               </p>
 
-              {/* Updated Progress Stats - Only 3 items */}
+              {/* REAL DATA: Updated Progress Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                   <div className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -158,33 +161,39 @@ function CategoryDetailContent() {
                 </div>
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
                   <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {userProgress.solved}
+                    {solvedQuestions}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">Solved</div>
                 </div>
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                   <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {progressPercentage}%
+                    {Math.round(progressPercentage)}%
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">Progress</div>
                 </div>
               </div>
-
-              {/* Removed Progress Bar */}
             </div>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Difficulty Breakdown */}
+          {/* REAL DATA: Difficulty Breakdown with solved counts */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Easy</h3>
               </div>
-              <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">
-                {questionsByLevel.easy}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                  {questionsByLevel.easy}
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {solvedByLevel.easy}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">solved</div>
+                </div>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Perfect for getting started
@@ -196,8 +205,16 @@ function CategoryDetailContent() {
                 <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Medium</h3>
               </div>
-              <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
-                {questionsByLevel.medium}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+                  {questionsByLevel.medium}
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {solvedByLevel.medium}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">solved</div>
+                </div>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Intermediate challenges
@@ -209,8 +226,16 @@ function CategoryDetailContent() {
                 <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Hard</h3>
               </div>
-              <div className="text-3xl font-bold text-red-600 dark:text-red-400 mb-2">
-                {questionsByLevel.hard}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-3xl font-bold text-red-600 dark:text-red-400">
+                  {questionsByLevel.hard}
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {solvedByLevel.hard}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">solved</div>
+                </div>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Advanced problem solving
@@ -269,8 +294,8 @@ function CategoryDetailContent() {
             <div className="space-y-4">
               {questions.map((question, index) => {
                 const levelColors = getDifficultyColor(question.level);
-                // TODO: Replace with real user progress data from API
-                const isSolved = false; // Will be fetched from user progress API
+                // REAL DATA: Get solved status from API response
+                const isSolved = questionsProgress?.[question.id] || false;
                 
                 return (
                   <div
@@ -280,7 +305,7 @@ function CategoryDetailContent() {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
-                        {/* Status Icon */}
+                        {/* Status Icon - REAL DATA */}
                         <div className="flex-shrink-0 pt-1">
                           {isSolved ? (
                             <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -314,8 +339,6 @@ function CategoryDetailContent() {
                           </div>
                         </div>
                       </div>
-
-
                     </div>
                   </div>
                 );

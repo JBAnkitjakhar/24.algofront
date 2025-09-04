@@ -1,4 +1,5 @@
 // src/types/index.ts - UPDATED centralized exports with Category and Question types
+
 export * from './auth';
 export * from './api';
 export * from './admin'; // This now includes user management, category, and question types

@@ -1,4 +1,4 @@
-// src/app/questions/[id]/page.tsx
+// src/app/questions/[id]/page.tsx - UPDATED with mark solved/unsolved functionality
 
 'use client';
 
@@ -19,10 +19,13 @@ import {
   Lightbulb,
   FileText,
   ExternalLink,
-  FolderOpen
+  FolderOpen,
+  Check,
+  X
 } from 'lucide-react';
 import { useQuestionById } from '@/hooks/useQuestionManagement';
 import { useCategoryById } from '@/hooks/useCategoryManagement';
+import { useQuestionProgress, useUpdateQuestionProgress } from '@/hooks/useUserProgress';
 import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
 import Image from 'next/image';
@@ -38,10 +41,25 @@ function QuestionDetailContent() {
   const { data: questionDetail, isLoading: questionLoading } = useQuestionById(questionId);
   const question = questionDetail?.question;
   const solutions = questionDetail?.solutions || [];
-  const solved = questionDetail?.solved || false;
-  const solvedAt = questionDetail?.solvedAt;
 
   const { data: category } = useCategoryById(question?.categoryId || '');
+
+  // REAL DATA: Get user's progress for this question
+  const { data: questionProgress } = useQuestionProgress(questionId);
+  const solved = questionProgress?.solved || false;
+  const solvedAt = questionProgress?.solvedAt;
+
+  // Mutation for updating progress
+  const updateProgressMutation = useUpdateQuestionProgress();
+
+  const handleToggleSolved = () => {
+    if (updateProgressMutation.isPending) return;
+    
+    updateProgressMutation.mutate({
+      questionId,
+      solved: !solved
+    });
+  };
 
   if (questionLoading) {
     return (
@@ -161,6 +179,37 @@ function QuestionDetailContent() {
 
               {/* Action Buttons */}
               <div className="flex items-center space-x-3 ml-4">
+                {/* Mark Solved/Unsolved Button */}
+                <button
+                  onClick={handleToggleSolved}
+                  disabled={updateProgressMutation.isPending}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                    solved
+                      ? 'bg-red-600 hover:bg-red-700 text-white'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  } ${
+                    updateProgressMutation.isPending 
+                      ? 'opacity-50 cursor-not-allowed' 
+                      : ''
+                  }`}
+                >
+                  {updateProgressMutation.isPending ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : solved ? (
+                    <X className="w-4 h-4" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  <span>
+                    {updateProgressMutation.isPending 
+                      ? 'Updating...' 
+                      : solved 
+                        ? 'Mark Unsolved' 
+                        : 'Mark Solved'
+                    }
+                  </span>
+                </button>
+
                 <button
                   onClick={() => router.push('/compiler')}
                   className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -424,7 +473,7 @@ function QuestionDetailContent() {
                   </div>
                 </div>
 
-                {/* Related Information */}
+                {/* Created By */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                     Created By

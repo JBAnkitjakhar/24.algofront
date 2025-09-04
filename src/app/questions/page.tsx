@@ -1,14 +1,15 @@
-// src/app/questions/page.tsx
+// src/app/questions/page.tsx - UPDATED with real user progress data
 
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import UserLayout from '@/components/layout/UserLayout';
-import { BookOpen, Search, Filter, Clock } from 'lucide-react';
+import { BookOpen, Search, Filter, Clock, CheckCircle2, Circle } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuestions } from '@/hooks/useQuestionManagement';
 import { useCategories } from '@/hooks/useCategoryManagement';
+import { useMultipleQuestionProgress } from '@/hooks/useUserProgress';
 import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
 import type { QuestionLevel } from '@/types';
@@ -53,10 +54,13 @@ function QuestionsContent() {
     error: questionsError 
   } = useQuestions(questionParams);
 
-  // Rest of the component stays exactly the same...
   const questions = questionsData?.content || [];
   const totalPages = questionsData?.totalPages || 0;
   const totalElements = questionsData?.totalElements || 0;
+
+  // REAL DATA: Get solved status for all questions in this page
+  const questionIds = questions.map(q => q.id);
+  const { data: questionsProgress } = useMultipleQuestionProgress(questionIds);
 
   // Updated statuses - only Solved and Unsolved
   const statuses = ['Solved', 'Unsolved'];
@@ -74,20 +78,13 @@ function QuestionsContent() {
     setPage(0); // Reset to first page
   };
 
-  // Updated mock function for solved status - only solved or not solved
-  const getQuestionStatus = (questionId: string) => {
-    // Mock some solved status based on question ID
-    const hash = questionId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    return { solved: hash % 3 === 0 }; // Simplified to just solved true/false
-  };
-
-  // Filter questions by status (client-side filtering for mock data)
+  // REAL DATA: Filter questions by status using actual progress data
   const filteredQuestions = questions.filter((question) => {
     if (selectedStatus === 'all') return true;
     
-    const status = getQuestionStatus(question.id);
-    if (selectedStatus === 'Solved') return status.solved;
-    if (selectedStatus === 'Unsolved') return !status.solved;
+    const isSolved = questionsProgress?.[question.id] || false;
+    if (selectedStatus === 'Solved') return isSolved;
+    if (selectedStatus === 'Unsolved') return !isSolved;
     
     return true;
   });
@@ -206,7 +203,7 @@ function QuestionsContent() {
             </div>
           </div>
 
-          {/* Questions List - SIMPLIFIED */}
+          {/* Questions List - SIMPLIFIED WITH REAL DATA */}
           {filteredQuestions.length === 0 ? (
             <div className="text-center py-12">
               <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -221,6 +218,8 @@ function QuestionsContent() {
             <div className="space-y-4">
               {filteredQuestions.map((question) => {
                 const levelColors = getDifficultyColor(question.level);
+                // REAL DATA: Get solved status from API response
+                const isSolved = questionsProgress?.[question.id] || false;
                 
                 return (
                   <div
@@ -229,32 +228,44 @@ function QuestionsContent() {
                     className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow cursor-pointer group"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        {/* SIMPLIFIED: Just title and difficulty badge */}
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                            {question.title}
-                          </h3>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${levelColors.bg} ${levelColors.text} ${levelColors.border}`}>
-                            {QUESTION_LEVEL_LABELS[question.level]}
-                          </span>
+                      <div className="flex items-start space-x-4 flex-1">
+                        {/* Status Icon - REAL DATA */}
+                        <div className="flex-shrink-0 pt-1">
+                          {isSolved ? (
+                            <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <Circle className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                          )}
                         </div>
 
-                        <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                          {question.statement.length > 150 
-                            ? question.statement.substring(0, 150).trim() + '...'
-                            : question.statement}
-                        </p>
-
-                        {/* SIMPLIFIED: Only category and creation date */}
-                        <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
-                          <div className="flex items-center space-x-1">
-                            <Filter className="w-4 h-4" />
-                            <span>{question.categoryName}</span>
+                        {/* Question Info */}
+                        <div className="flex-1">
+                          {/* SIMPLIFIED: Just title and difficulty badge */}
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                              {question.title}
+                            </h3>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${levelColors.bg} ${levelColors.text} ${levelColors.border}`}>
+                              {QUESTION_LEVEL_LABELS[question.level]}
+                            </span>
                           </div>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-4 h-4" />
-                            <span>Created {dateUtils.formatRelativeTime(question.createdAt)}</span>
+
+                          <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                            {question.statement.length > 150 
+                              ? question.statement.substring(0, 150).trim() + '...'
+                              : question.statement}
+                          </p>
+
+                          {/* SIMPLIFIED: Only category and creation date */}
+                          <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center space-x-1">
+                              <Filter className="w-4 h-4" />
+                              <span>{question.categoryName}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Clock className="w-4 h-4" />
+                              <span>Created {dateUtils.formatRelativeTime(question.createdAt)}</span>
+                            </div>
                           </div>
                         </div>
                       </div>

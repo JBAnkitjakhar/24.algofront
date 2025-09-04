@@ -1,4 +1,4 @@
-// src/constants/index.ts - Updated with compiler endpoints
+// src/constants/index.ts  
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api';
 
@@ -24,6 +24,7 @@ export const ADMIN_ENDPOINTS = {
   USERS_BY_ROLE: (role: string) => `${API_BASE_URL}/admin/users/role/${role}`,
   UPDATE_USER_ROLE: (id: string) => `${API_BASE_URL}/admin/users/${id}/role`,
   USER_PERMISSIONS: `${API_BASE_URL}/admin/users/permissions`,
+  GLOBAL_PROGRESS: `${API_BASE_URL}/admin/progress/global`,
 } as const;
 
 // Category management endpoints
@@ -34,6 +35,7 @@ export const CATEGORY_ENDPOINTS = {
   UPDATE: (id: string) => `${API_BASE_URL}/categories/${id}`,
   DELETE: (id: string) => `${API_BASE_URL}/categories/${id}`,
   GET_STATS: (id: string) => `${API_BASE_URL}/categories/${id}/stats`,
+  GET_PROGRESS: (id: string) => `${API_BASE_URL}/categories/${id}/progress`,
 } as const;
 
 // Question management endpoints
@@ -45,6 +47,16 @@ export const QUESTION_ENDPOINTS = {
   DELETE: (id: string) => `${API_BASE_URL}/questions/${id}`,
   SEARCH: `${API_BASE_URL}/questions/search`,
   STATS: `${API_BASE_URL}/questions/stats`,
+  GET_PROGRESS: (id: string) => `${API_BASE_URL}/questions/${id}/progress`,
+  UPDATE_PROGRESS: (id: string) => `${API_BASE_URL}/questions/${id}/progress`,
+} as const;
+
+// USER PROGRESS ENDPOINTS - NEW
+export const USER_PROGRESS_ENDPOINTS = {
+  CURRENT_USER_STATS: `${API_BASE_URL}/users/progress`,
+  CURRENT_USER_RECENT: `${API_BASE_URL}/users/progress/recent`,
+  USER_STATS: (userId: string) => `${API_BASE_URL}/users/${userId}/progress`,
+  USER_ALL_PROGRESS: (userId: string) => `${API_BASE_URL}/users/${userId}/progress/all`,
 } as const;
 
 // Solution management endpoints
@@ -175,6 +187,7 @@ export const QUERY_KEYS = {
     LIST: ['categories', 'list'] as const,
     DETAIL: (id: string) => ['categories', 'detail', id] as const,
     STATS: (id: string) => ['categories', 'stats', id] as const,
+    PROGRESS: (id: string) => ['categories', 'progress', id] as const,
   },
   QUESTIONS: {
     LIST: ['questions', 'list'] as const,
@@ -182,6 +195,16 @@ export const QUERY_KEYS = {
     STATS: ['questions', 'stats'] as const,
     SEARCH: (query: string) => ['questions', 'search', query] as const,
     BY_CATEGORY: (categoryId: string) => ['questions', 'category', categoryId] as const,
+    PROGRESS: (id: string) => ['questions', 'progress', id] as const,
+  },
+  // USER PROGRESS QUERY KEYS - NEW
+  USER_PROGRESS: {
+    CURRENT_STATS: ['userProgress', 'currentStats'] as const,
+    CURRENT_RECENT: ['userProgress', 'currentRecent'] as const,
+    QUESTION_PROGRESS: (questionId: string) => ['userProgress', 'question', questionId] as const,
+    CATEGORY_PROGRESS: (categoryId: string) => ['userProgress', 'category', categoryId] as const,
+    USER_STATS: (userId: string) => ['userProgress', 'userStats', userId] as const,
+    USER_ALL: (userId: string) => ['userProgress', 'userAll', userId] as const,
   },
   SOLUTIONS: {
     LIST: ['solutions', 'list'] as const,

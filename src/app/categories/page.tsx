@@ -1,4 +1,4 @@
-// src/app/categories/page.tsx
+// src/app/categories/page.tsx - UPDATED with real user progress data
 
 "use client";
 
@@ -8,6 +8,8 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import UserLayout from "@/components/layout/UserLayout";
 import { FolderOpen, Search } from "lucide-react";
 import { useCategoriesWithStats } from "@/hooks/useCategoryManagement";
+import { useCategoryProgress } from "@/hooks/useUserProgress";
+
 interface CategoryWithStats {
   id: string;
   name: string;
@@ -29,9 +31,10 @@ function CategoryCard({ category, onClick }: {
   const totalQuestions = category.totalQuestions;
   const { easy, medium, hard } = category.questionsByLevel;
   
-  // Mock user progress - replace with real data when user progress is implemented
-  const completedProblems = Math.floor(totalQuestions * (0.2 + Math.random() * 0.3)); // 20-50% completed
-  const progressPercentage = totalQuestions > 0 ? Math.round((completedProblems / totalQuestions) * 100) : 0;
+  // REAL DATA: Get user's actual progress for this category
+  const { data: userProgress } = useCategoryProgress(category.id);
+  const completedProblems = userProgress?.solvedInCategory || 0;
+  const progressPercentage = userProgress?.categoryProgressPercentage || 0;
 
   // Color schemes for categories
   const colorSchemes = [
@@ -91,7 +94,7 @@ function CategoryCard({ category, onClick }: {
         </p>
       </div>
 
-      {/* Category Content - SIMPLIFIED */}
+      {/* Category Content - SIMPLIFIED WITH REAL DATA */}
       <div className="p-6">
         {/* Stats */}
         <div className="flex items-center justify-between mb-4">
@@ -112,7 +115,7 @@ function CategoryCard({ category, onClick }: {
           <div className="text-right">
             <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Progress</div>
             <div className="text-lg font-semibold text-gray-900 dark:text-white">
-              {progressPercentage}%
+              {Math.round(progressPercentage)}%
             </div>
           </div>
         </div>

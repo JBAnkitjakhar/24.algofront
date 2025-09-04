@@ -1,4 +1,4 @@
-// src/types/admin.ts
+// src/types/admin.ts - COMPLETE UPDATED WITH USER PROGRESS TYPES
 
 import { UserRole } from "./auth";
 
@@ -99,7 +99,13 @@ export interface GlobalProgress {
   timestamp: number;
 }
 
-// UPDATED: User Management Types to match backend UserDTO exactly
+export interface GlobalProgressStats {
+  totalSolvedGlobally: number;
+  activeUsers: number;
+  averageQuestionsPerUser: number;
+}
+
+// User Management Types
 export interface UserListItem {
   id: string;
   name: string;
@@ -154,7 +160,54 @@ export interface RoleUpdateResponse {
   user: UserListItem;
 }
 
-// ADDED: Category Management Types
+// ==================== USER PROGRESS TYPES ====================
+
+export interface UserProgressDTO {
+  id: string;
+  userId: string;
+  userName: string;
+  questionId: string;
+  questionTitle: string;
+  solved: boolean;
+  level: QuestionLevel;
+  solvedAt?: string; // ISO string from LocalDateTime
+}
+
+export interface UserProgressStats {
+  totalSolved: number;
+  solvedByLevel: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+  totalQuestions: number;
+  totalByLevel: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+  progressPercentage: number;
+  progressByLevel: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+  streak: number;
+  recentSolved: number;
+}
+
+export interface CategoryProgressStats {
+  totalInCategory: number;
+  solvedInCategory: number;
+  solvedByLevel: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+  categoryProgressPercentage: number;
+}
+
+// Category Management Types
 export interface Category {
   id: string;
   name: string;
@@ -187,7 +240,7 @@ export interface DeleteCategoryResponse {
   deletedQuestions: number;
 }
 
-// ADDED: Question Management Types
+// Question Management Types
 export enum QuestionLevel {
   EASY = 'EASY',
   MEDIUM = 'MEDIUM',
@@ -306,27 +359,7 @@ export interface FileUploadResponse {
   message: string;
 }
 
-// Solution interface (referenced in QuestionDetail)
-export interface Solution {
-  id: string;
-  questionId: string;
-  questionTitle: string;
-  content: string;
-  driveLink?: string;
-  youtubeLink?: string;
-  imageUrls?: string[];
-  visualizerFileIds?: string[];
-  codeSnippet?: CodeSnippet;
-  createdByName: string;
-  createdById: string;
-  createdAt: string;
-  updatedAt: string;
-  youtubeEmbedUrl?: string;
-  youtubeVideoId?: string;
-}
-
-// ==================== SOLUTION TYPES ====================
-
+// Solution interface
 export interface Solution {
   id: string;
   questionId: string;
