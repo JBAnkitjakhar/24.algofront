@@ -214,16 +214,8 @@ export function useMultipleQuestionProgress(questionIds: string[]) {
             solved: response.success && response.data ? response.data.solved : false,
           };
         } catch (error) {
-          // Handle 404s gracefully - means no progress record exists yet
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          const axiosError = error as { response?: { status?: number } };
-          
-          if (axiosError.response?.status === 404 || errorMessage.includes('404')) {
-            return { questionId, solved: false };
-          }
-          
-          // For other errors, assume not solved to avoid breaking UI
-          console.warn(`Failed to fetch progress for question ${questionId}:`, errorMessage);
+          console.error(error);
+          // Handle ALL errors silently - 404s are expected for questions without progress
           return { questionId, solved: false };
         }
       });
@@ -239,6 +231,10 @@ export function useMultipleQuestionProgress(questionIds: string[]) {
     enabled: !!user && questionIds.length > 0,
     staleTime: 1 * 60 * 1000, // 1 minute
     retry: false, // Don't retry since we handle errors gracefully
+    // Make React Query silent about these errors
+    meta: {
+      errorBoundary: false,
+    },
   });
 
   return queries;
