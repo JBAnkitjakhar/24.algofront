@@ -71,7 +71,7 @@ export const SOLUTION_ENDPOINTS = {
   REMOVE_VISUALIZER: (id: string) => `${API_BASE_URL}/solutions/${id}/visualizers`,
 } as const;
 
-// ADDED: Compiler endpoints
+// Compiler endpoints
 export const COMPILER_ENDPOINTS = {
   EXECUTE: `${API_BASE_URL}/compiler/execute`,
   RUNTIMES: `${API_BASE_URL}/compiler/runtimes`,
@@ -101,7 +101,9 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   ADMIN: '/admin',
   QUESTIONS: '/questions',
+  QUESTION_DETAIL: (id: string) => `/questions/${id}`,
   CATEGORIES: '/categories',
+  CATEGORY_DETAIL: (id: string) => `/categories/${id}`,
   COMPILER: '/compiler',
   USER_PROGRESS: '/userprogress',
   PROFILE: '/profile',
@@ -189,7 +191,6 @@ export const QUERY_KEYS = {
     STATS: ['solutions', 'stats'] as const,
     VISUALIZERS: (solutionId?: string) => solutionId ? ['solutions', 'visualizers', solutionId] as const : ['solutions', 'visualizers'] as const,
   },
-  // ADDED: Compiler query keys
   COMPILER: {
     RUNTIMES: ['compiler', 'runtimes'] as const,
     LANGUAGES: ['compiler', 'languages'] as const,
@@ -221,7 +222,7 @@ export const SOLUTION_VALIDATION = {
   DESCRIPTION_MAX_LENGTH: 200,
 } as const;
 
-// ADDED: Compiler validation constants
+// Compiler validation constants
 export const COMPILER_VALIDATION = {
   CODE_MAX_LENGTH: 50000,
   INPUT_MAX_LENGTH: 10000,
@@ -238,19 +239,19 @@ export const QUESTION_LEVEL_LABELS = {
 // Question level colors for UI
 export const QUESTION_LEVEL_COLORS = {
   EASY: {
-    bg: 'bg-green-50',
-    text: 'text-green-800',
-    border: 'border-green-200',
+    bg: 'bg-green-50 dark:bg-green-900/20',
+    text: 'text-green-800 dark:text-green-300',
+    border: 'border-green-200 dark:border-green-800',
   },
   MEDIUM: {
-    bg: 'bg-yellow-50', 
-    text: 'text-yellow-800',
-    border: 'border-yellow-200',
+    bg: 'bg-yellow-50 dark:bg-yellow-900/20', 
+    text: 'text-yellow-800 dark:text-yellow-300',
+    border: 'border-yellow-200 dark:border-yellow-800',
   },
   HARD: {
-    bg: 'bg-red-50',
-    text: 'text-red-800',
-    border: 'border-red-200',
+    bg: 'bg-red-50 dark:bg-red-900/20',
+    text: 'text-red-800 dark:text-red-300',
+    border: 'border-red-200 dark:border-red-800',
   },
 } as const;
 
@@ -258,4 +259,11 @@ export const QUESTION_LEVEL_COLORS = {
 export const CATEGORY_VALIDATION = {
   NAME_MIN_LENGTH: 2,
   NAME_MAX_LENGTH: 50,
+} as const;
+
+// User interface constants
+export const UI_CONSTANTS = {
+  DEFAULT_PAGE_SIZE: 20,
+  SEARCH_DEBOUNCE_DELAY: 300,
+  PAGINATION_DISPLAY_RANGE: 5,
 } as const;

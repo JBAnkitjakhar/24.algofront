@@ -1,109 +1,50 @@
-// src/app/questions/page.tsx
-
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import UserLayout from '@/components/layout/UserLayout';
-import { BookOpen, Search, Filter, Clock, Star, CheckCircle2, Circle } from 'lucide-react';
-import { useState } from 'react';
+import { BookOpen, Search, Filter, Clock, Star, CheckCircle2, Circle, ChevronRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { useQuestions } from '@/hooks/useQuestionManagement';
+import { useCategories } from '@/hooks/useCategoryManagement';
+import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
+import { dateUtils } from '@/lib/utils/common';
+import type { QuestionLevel } from '@/types';
 
 function QuestionsContent() {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
 
-  // Placeholder data for questions
-  const questions = [
-    {
-      id: 1,
-      title: 'Two Sum',
-      difficulty: 'Easy',
-      category: 'Array',
-      description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.',
-      solved: true,
-      attempts: 3,
-      timeSpent: '45 min',
-      tags: ['Array', 'Hash Table'],
-      acceptance: 85,
-    },
-    {
-      id: 2,
-      title: 'Add Two Numbers',
-      difficulty: 'Medium',
-      category: 'Linked List',
-      description: 'You are given two non-empty linked lists representing two non-negative integers.',
-      solved: true,
-      attempts: 2,
-      timeSpent: '1h 20min',
-      tags: ['Linked List', 'Math', 'Recursion'],
-      acceptance: 67,
-    },
-    {
-      id: 3,
-      title: 'Longest Substring Without Repeating Characters',
-      difficulty: 'Medium',
-      category: 'String',
-      description: 'Given a string s, find the length of the longest substring without repeating characters.',
-      solved: false,
-      attempts: 1,
-      timeSpent: '30 min',
-      tags: ['Hash Table', 'String', 'Sliding Window'],
-      acceptance: 73,
-    },
-    {
-      id: 4,
-      title: 'Median of Two Sorted Arrays',
-      difficulty: 'Hard',
-      category: 'Array',
-      description: 'Given two sorted arrays nums1 and nums2 of size m and n respectively, return the median.',
-      solved: false,
-      attempts: 0,
-      timeSpent: '0 min',
-      tags: ['Array', 'Binary Search', 'Divide and Conquer'],
-      acceptance: 45,
-    },
-    {
-      id: 5,
-      title: 'Longest Palindromic Substring',
-      difficulty: 'Medium',
-      category: 'String',
-      description: 'Given a string s, return the longest palindromic substring in s.',
-      solved: true,
-      attempts: 4,
-      timeSpent: '2h 15min',
-      tags: ['String', 'Dynamic Programming'],
-      acceptance: 52,
-    },
-    {
-      id: 6,
-      title: 'ZigZag Conversion',
-      difficulty: 'Medium',
-      category: 'String',
-      description: 'The string "PAYPALISHIRING" is written in a zigzag pattern on a given number of rows.',
-      solved: false,
-      attempts: 2,
-      timeSpent: '1h 5min',
-      tags: ['String'],
-      acceptance: 69,
-    },
-  ];
+  // API calls
+  const { data: categories = [] } = useCategories();
+  
+  const questionParams = useMemo(() => ({
+    page,
+    size: pageSize,
+    categoryId: selectedCategory === 'all' ? undefined : selectedCategory,
+    level: selectedDifficulty === 'all' ? undefined : selectedDifficulty,
+    search: searchTerm.trim() || undefined,
+  }), [page, selectedCategory, selectedDifficulty, searchTerm]);
 
-  const categories = ['Array', 'String', 'Linked List', 'Tree', 'Dynamic Programming', 'Graph'];
-  const difficulties = ['Easy', 'Medium', 'Hard'];
+  const { 
+    data: questionsData, 
+    isLoading: questionsLoading,
+    error: questionsError 
+  } = useQuestions(questionParams);
+
+  const questions = questionsData?.content || [];
+  const totalPages = questionsData?.totalPages || 0;
+  const totalElements = questionsData?.totalElements || 0;
+
   const statuses = ['Solved', 'Attempted', 'Not Started'];
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Easy':
-        return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
-      case 'Medium':
-        return 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
-      case 'Hard':
-        return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
-      default:
-        return 'text-gray-600 dark:text-gray-400';
-    }
+  const getDifficultyColor = (difficulty: QuestionLevel) => {
+    return QUESTION_LEVEL_COLORS[difficulty];
   };
 
   const getAcceptanceColor = (acceptance: number) => {
@@ -112,21 +53,72 @@ function QuestionsContent() {
     return 'text-red-600 dark:text-red-400';
   };
 
-  const filteredQuestions = questions.filter((question) => {
-    const matchesSearch = question.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         question.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         question.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesDifficulty = selectedDifficulty === 'all' || question.difficulty === selectedDifficulty;
-    const matchesCategory = selectedCategory === 'all' || question.category === selectedCategory;
-    
-    const matchesStatus = selectedStatus === 'all' || 
-                         (selectedStatus === 'Solved' && question.solved) ||
-                         (selectedStatus === 'Attempted' && !question.solved && question.attempts > 0) ||
-                         (selectedStatus === 'Not Started' && question.attempts === 0);
+  const handleQuestionClick = (questionId: string) => {
+    router.push(`/questions/${questionId}`);
+  };
 
-    return matchesSearch && matchesDifficulty && matchesCategory && matchesStatus;
+  const handleCategoryFilter = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setPage(0); // Reset to first page
+  };
+
+  // Mock function for solved status - replace with real user progress data
+  const getQuestionStatus = (questionId: string) => {
+    // Mock some solved/attempted status based on question ID
+    const hash = questionId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    if (hash % 4 === 0) return { solved: true, attempted: false };
+    if (hash % 3 === 0) return { solved: false, attempted: true };
+    return { solved: false, attempted: false };
+  };
+
+  // Filter questions by status (client-side filtering for mock data)
+  const filteredQuestions = questions.filter((question) => {
+    if (selectedStatus === 'all') return true;
+    
+    const status = getQuestionStatus(question.id);
+    if (selectedStatus === 'Solved') return status.solved;
+    if (selectedStatus === 'Attempted') return status.attempted && !status.solved;
+    if (selectedStatus === 'Not Started') return !status.solved && !status.attempted;
+    
+    return true;
   });
+
+  if (questionsLoading && questions.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading questions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (questionsError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <BookOpen className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            Error Loading Questions
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Unable to load questions. Please try again later.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate mock statistics
+  const totalSolved = Math.floor(totalElements * 0.28);
+  const totalRemaining = totalElements - totalSolved;
 
   return (
     <UserLayout>
@@ -158,7 +150,10 @@ function QuestionsContent() {
                   type="text"
                   placeholder="Search questions..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(0);
+                  }}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -166,24 +161,27 @@ function QuestionsContent() {
               {/* Difficulty Filter */}
               <select
                 value={selectedDifficulty}
-                onChange={(e) => setSelectedDifficulty(e.target.value)}
+                onChange={(e) => {
+                  setSelectedDifficulty(e.target.value);
+                  setPage(0);
+                }}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All Difficulties</option>
-                {difficulties.map((difficulty) => (
-                  <option key={difficulty} value={difficulty}>{difficulty}</option>
-                ))}
+                <option value="EASY">Easy</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HARD">Hard</option>
               </select>
 
               {/* Category Filter */}
               <select
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+                onChange={(e) => handleCategoryFilter(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All Categories</option>
                 {categories.map((category) => (
-                  <option key={category} value={category}>{category}</option>
+                  <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </select>
 
@@ -201,96 +199,22 @@ function QuestionsContent() {
             </div>
 
             <div className="mt-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-              <span>Showing {filteredQuestions.length} of {questions.length} questions</span>
+              <span>Showing {filteredQuestions.length} of {totalElements} questions</span>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-1">
                   <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  <span>Solved: {questions.filter(q => q.solved).length}</span>
+                  <span>Solved: {totalSolved}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Circle className="w-4 h-4 text-gray-400" />
-                  <span>Remaining: {questions.filter(q => !q.solved).length}</span>
+                  <span>Remaining: {totalRemaining}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Questions List */}
-          <div className="space-y-4">
-            {filteredQuestions.map((question) => (
-              <div
-                key={question.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow cursor-pointer"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      {question.solved ? (
-                        <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
-                      ) : question.attempts > 0 ? (
-                        <Circle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-                      ) : (
-                        <Circle className="w-6 h-6 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                      )}
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {question.title}
-                      </h3>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getDifficultyColor(question.difficulty)}`}>
-                        {question.difficulty}
-                      </span>
-                    </div>
-
-                    <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                      {question.description}
-                    </p>
-
-                    <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
-                      <div className="flex items-center space-x-1">
-                        <Filter className="w-4 h-4" />
-                        <span>{question.category}</span>
-                      </div>
-                      {question.attempts > 0 && (
-                        <>
-                          <div className="flex items-center space-x-1">
-                            <span>Attempts: {question.attempts}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-4 h-4" />
-                            <span>{question.timeSpent}</span>
-                          </div>
-                        </>
-                      )}
-                      <div className="flex items-center space-x-1">
-                        <Star className="w-4 h-4" />
-                        <span className={getAcceptanceColor(question.acceptance)}>
-                          {question.acceptance}% acceptance
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {question.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2 ml-4">
-                    <button className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
-                      {question.solved ? 'Review' : question.attempts > 0 ? 'Continue' : 'Start'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {filteredQuestions.length === 0 && (
+          {filteredQuestions.length === 0 ? (
             <div className="text-center py-12">
               <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
@@ -299,6 +223,103 @@ function QuestionsContent() {
               <p className="text-gray-600 dark:text-gray-400">
                 Try adjusting your search criteria or filters.
               </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredQuestions.map((question, index) => {
+                const levelColors = getDifficultyColor(question.level);
+                const status = getQuestionStatus(question.id);
+                const mockAcceptance = 0; // TODO: Get real acceptance rate from API if available
+                
+                return (
+                  <div
+                    key={question.id}
+                    onClick={() => handleQuestionClick(question.id)}
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow cursor-pointer group"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          {status.solved ? (
+                            <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
+                          ) : status.attempted ? (
+                            <Circle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                          ) : (
+                            <Circle className="w-6 h-6 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                          )}
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            {page * pageSize + index + 1}. {question.title}
+                          </h3>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${levelColors.bg} ${levelColors.text} ${levelColors.border}`}>
+                            {QUESTION_LEVEL_LABELS[question.level]}
+                          </span>
+                        </div>
+
+                        <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                          {question.statement.length > 150 
+                            ? question.statement.substring(0, 150).trim() + '...'
+                            : question.statement}
+                        </p>
+
+                        <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
+                          <div className="flex items-center space-x-1">
+                            <Filter className="w-4 h-4" />
+                            <span>{question.categoryName}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Clock className="w-4 h-4" />
+                            <span>Created {dateUtils.formatRelativeTime(question.createdAt)}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Star className="w-4 h-4" />
+                            <span className={getAcceptanceColor(mockAcceptance)}>
+                              {mockAcceptance}% acceptance
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2 ml-4">
+                        <button className="flex items-center space-x-1 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors group-hover:translate-x-1 duration-200">
+                          <span>
+                            {status.solved ? 'Review' : status.attempted ? 'Continue' : 'Start'}
+                          </span>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-8">
+              <div className="text-sm text-gray-700 dark:text-gray-300">
+                Showing {page * pageSize + 1} to {Math.min((page + 1) * pageSize, totalElements)} of{' '}
+                {totalElements} results
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setPage(Math.max(0, page - 1))}
+                  disabled={page === 0 || questionsLoading}
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  Previous
+                </button>
+                <span className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Page {page + 1} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                  disabled={page >= totalPages - 1 || questionsLoading}
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
