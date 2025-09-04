@@ -1,8 +1,10 @@
+// src/app/questions/page.tsx
+
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import UserLayout from '@/components/layout/UserLayout';
-import { BookOpen, Search, Filter, Clock, Star, CheckCircle2, Circle, ChevronRight } from 'lucide-react';
+import { BookOpen, Search, Filter, Clock } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuestions } from '@/hooks/useQuestionManagement';
@@ -29,6 +31,9 @@ function QuestionsContent() {
     categoryId: selectedCategory === 'all' ? undefined : selectedCategory,
     level: selectedDifficulty === 'all' ? undefined : selectedDifficulty,
     search: searchTerm.trim() || undefined,
+    // ADD SORTING: Sort by creation date ascending (oldest first)
+    sort: 'createdAt',
+    direction: 'asc'
   }), [page, selectedCategory, selectedDifficulty, searchTerm]);
 
   const { 
@@ -37,6 +42,7 @@ function QuestionsContent() {
     error: questionsError 
   } = useQuestions(questionParams);
 
+  // Rest of the component stays exactly the same...
   const questions = questionsData?.content || [];
   const totalPages = questionsData?.totalPages || 0;
   const totalElements = questionsData?.totalElements || 0;
@@ -45,12 +51,6 @@ function QuestionsContent() {
 
   const getDifficultyColor = (difficulty: QuestionLevel) => {
     return QUESTION_LEVEL_COLORS[difficulty];
-  };
-
-  const getAcceptanceColor = (acceptance: number) => {
-    if (acceptance >= 70) return 'text-green-600 dark:text-green-400';
-    if (acceptance >= 50) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
   };
 
   const handleQuestionClick = (questionId: string) => {
@@ -115,10 +115,6 @@ function QuestionsContent() {
       </div>
     );
   }
-
-  // Calculate mock statistics
-  const totalSolved = Math.floor(totalElements * 0.28);
-  const totalRemaining = totalElements - totalSolved;
 
   return (
     <UserLayout>
@@ -200,20 +196,11 @@ function QuestionsContent() {
 
             <div className="mt-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
               <span>Showing {filteredQuestions.length} of {totalElements} questions</span>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-1">
-                  <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  <span>Solved: {totalSolved}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Circle className="w-4 h-4 text-gray-400" />
-                  <span>Remaining: {totalRemaining}</span>
-                </div>
-              </div>
+              <span className="text-xs italic">Sorted by creation date (oldest first)</span>
             </div>
           </div>
 
-          {/* Questions List */}
+          {/* Questions List - SIMPLIFIED */}
           {filteredQuestions.length === 0 ? (
             <div className="text-center py-12">
               <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -226,10 +213,8 @@ function QuestionsContent() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredQuestions.map((question, index) => {
+              {filteredQuestions.map((question) => {
                 const levelColors = getDifficultyColor(question.level);
-                const status = getQuestionStatus(question.id);
-                const mockAcceptance = 0; // TODO: Get real acceptance rate from API if available
                 
                 return (
                   <div
@@ -239,16 +224,10 @@ function QuestionsContent() {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
+                        {/* SIMPLIFIED: Just title and difficulty badge */}
                         <div className="flex items-center space-x-3 mb-2">
-                          {status.solved ? (
-                            <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
-                          ) : status.attempted ? (
-                            <Circle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-                          ) : (
-                            <Circle className="w-6 h-6 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                          )}
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                            {page * pageSize + index + 1}. {question.title}
+                            {question.title}
                           </h3>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${levelColors.bg} ${levelColors.text} ${levelColors.border}`}>
                             {QUESTION_LEVEL_LABELS[question.level]}
@@ -261,6 +240,7 @@ function QuestionsContent() {
                             : question.statement}
                         </p>
 
+                        {/* SIMPLIFIED: Only category and creation date */}
                         <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
                           <div className="flex items-center space-x-1">
                             <Filter className="w-4 h-4" />
@@ -270,22 +250,7 @@ function QuestionsContent() {
                             <Clock className="w-4 h-4" />
                             <span>Created {dateUtils.formatRelativeTime(question.createdAt)}</span>
                           </div>
-                          <div className="flex items-center space-x-1">
-                            <Star className="w-4 h-4" />
-                            <span className={getAcceptanceColor(mockAcceptance)}>
-                              {mockAcceptance}% acceptance
-                            </span>
-                          </div>
                         </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button className="flex items-center space-x-1 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors group-hover:translate-x-1 duration-200">
-                          <span>
-                            {status.solved ? 'Review' : status.attempted ? 'Continue' : 'Start'}
-                          </span>
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
                       </div>
                     </div>
                   </div>

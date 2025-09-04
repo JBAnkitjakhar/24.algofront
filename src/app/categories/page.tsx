@@ -1,16 +1,13 @@
 // src/app/categories/page.tsx
 
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import UserLayout from '@/components/layout/UserLayout';
-import { FolderOpen, ArrowRight, Star, Clock, Search } from 'lucide-react';
-import { useCategories } from '@/hooks/useCategoryManagement';
-import { useCategoryStats } from '@/hooks/useCategoryManagement';
-import { dateUtils } from '@/lib/utils/common';
-
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import UserLayout from "@/components/layout/UserLayout";
+import { FolderOpen, Star, Clock, Search } from "lucide-react";
+import { useCategoriesWithStats } from "@/hooks/useCategoryManagement";
 interface CategoryWithStats {
   id: string;
   name: string;
@@ -68,37 +65,33 @@ function CategoryCard({ category, onClick }: {
     return '📁';
   };
 
-  const getDifficultyLabel = () => {
-    const hasEasy = easy > 0;
-    const hasMedium = medium > 0;
-    const hasHard = hard > 0;
-    
-    if (hasEasy && hasMedium && hasHard) return 'Easy to Hard';
-    if (hasEasy && hasMedium) return 'Easy to Medium';
-    if (hasMedium && hasHard) return 'Medium to Hard';
-    if (hasEasy) return 'Easy';
-    if (hasMedium) return 'Medium';
-    if (hasHard) return 'Hard';
-    return 'Mixed';
-  };
-
   return (
     <div
       onClick={onClick}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer group"
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer group relative"
     >
-      {/* Category Header */}
-      <div className={`${bgColor} p-6 text-white relative overflow-hidden`}>
-        <div className="absolute top-2 right-2 text-4xl opacity-20">
+      {/* ICON POSITIONED ABSOLUTELY ON TOP - 100% VISIBLE */}
+      <div className="absolute top-3 right-3 z-20 w-16 h-16 bg-white bg-opacity-90 dark:bg-gray-800 dark:bg-opacity-90 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm">
+        <span className="text-2xl">
           {getIcon(category.name)}
+        </span>
+      </div>
+
+      {/* Category Header - Clean without background icon */}
+      <div className={`${bgColor} p-6 text-white relative overflow-hidden`}>
+        {/* Subtle pattern overlay for visual interest */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-8 translate-x-8 bg-white"></div>
+          <div className="absolute bottom-0 left-0 w-20 h-20 rounded-full translate-y-4 -translate-x-4 bg-white"></div>
         </div>
-        <h3 className="text-xl font-bold mb-2">{category.name}</h3>
-        <p className="text-sm opacity-90">
+        
+        <h3 className="text-xl font-bold mb-2 relative z-10 pr-20">{category.name}</h3>
+        <p className="text-sm opacity-90 relative z-10 pr-20">
           Explore {totalQuestions} problem{totalQuestions !== 1 ? 's' : ''} in this category
         </p>
       </div>
 
-      {/* Category Content */}
+      {/* Category Content - SIMPLIFIED */}
       <div className="p-6">
         {/* Stats */}
         <div className="flex items-center justify-between mb-4">
@@ -124,8 +117,8 @@ function CategoryCard({ category, onClick }: {
           </div>
         </div>
 
-        {/* Difficulty Breakdown */}
-        <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-4">
+        {/* Difficulty Breakdown - SIMPLIFIED */}
+        <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
           <div className="flex items-center space-x-3">
             {totalQuestions === 0 ? (
               <span className="text-xs italic">Stats will load when you explore</span>
@@ -158,38 +151,6 @@ function CategoryCard({ category, onClick }: {
               : '—'
             }
           </span>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-4">
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-            <div
-              className={`h-2 rounded-full ${bgColor} transition-all duration-300`}
-              style={{ width: `${progressPercentage}%` }}
-            ></div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Star className="w-4 h-4 text-yellow-400" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {getDifficultyLabel()}
-            </span>
-          </div>
-          <button className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium group-hover:translate-x-1 transition-all duration-200">
-            <span className="text-sm">Explore</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Created info */}
-        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>By {category.createdByName}</span>
-            <span>{dateUtils.formatRelativeTime(category.createdAt)}</span>
-          </div>
         </div>
       </div>
     </div>
@@ -259,26 +220,13 @@ function CategoryStatsCard({ stats }: { stats: CategoryStats }) {
 
 function CategoriesContent() {
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch categories
-  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
-
-  // Fetch stats for each category and combine with category data
-  const categoriesWithStats: CategoryWithStats[] = categories.map(category => {
-    // Use the actual category stats hook for each category
-    const { data: categoryStats } = useCategoryStats(category.id);
-    
-    return {
-      ...category,
-      totalQuestions: categoryStats?.totalQuestions || 0,
-      questionsByLevel: categoryStats?.questionsByLevel || { easy: 0, medium: 0, hard: 0 },
-      totalSolutions: categoryStats?.totalSolutions || 0,
-    };
-  });
+  const { data: categoriesWithStats = [], isLoading: categoriesLoading } =
+    useCategoriesWithStats();
 
   // Filter categories based on search
-  const filteredCategories = categoriesWithStats.filter(category =>
+  const filteredCategories = categoriesWithStats.filter((category) =>
     category.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -291,14 +239,19 @@ function CategoriesContent() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading categories...</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading categories...
+          </p>
         </div>
       </div>
     );
   }
 
   // Calculate real aggregate stats from API data
-  const totalQuestions = categoriesWithStats.reduce((sum, cat) => sum + cat.totalQuestions, 0);
+  const totalQuestions = categoriesWithStats.reduce(
+    (sum, cat) => sum + cat.totalQuestions,
+    0
+  );
   const stats: CategoryStats = {
     totalQuestions,
     totalSolved: 0, // TODO: Get from user progress API
@@ -318,8 +271,9 @@ function CategoriesContent() {
                 Problem Categories
               </h1>
               <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                Explore different categories of coding problems. Each category contains carefully curated 
-                problems to help you master specific algorithms and data structures.
+                Explore different categories of coding problems. Each category
+                contains carefully curated problems to help you master specific
+                algorithms and data structures.
               </p>
             </div>
           </div>
@@ -328,7 +282,7 @@ function CategoriesContent() {
         {/* Search and Categories */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Search Bar */}
-          {categories.length > 6 && (
+          {categoriesWithStats.length > 6 && (
             <div className="mb-8">
               <div className="max-w-md mx-auto">
                 <div className="relative">
@@ -350,12 +304,12 @@ function CategoriesContent() {
             <div className="text-center py-12">
               <FolderOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                {searchTerm ? 'No categories found' : 'No categories available'}
+                {searchTerm ? "No categories found" : "No categories available"}
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
-                {searchTerm 
-                  ? 'Try adjusting your search terms.' 
-                  : 'Categories will appear here once they are created by administrators.'}
+                {searchTerm
+                  ? "Try adjusting your search terms."
+                  : "Categories will appear here once they are created by administrators."}
               </p>
             </div>
           ) : (

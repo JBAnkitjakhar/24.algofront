@@ -1,4 +1,4 @@
-// src/hooks/useCategoryManagement.ts - Category management hooks
+// src/hooks/useCategoryManagement.ts - COMPLETE UPDATED FILE
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { categoryApiService } from '@/lib/api/categoryService';
@@ -67,6 +67,62 @@ export function useCategoryStats(id: string) {
 }
 
 /**
+ * NEW HOOK: Get all categories with their stats combined
+ * This solves the hooks-in-callback problem by fetching everything at the component level
+ */
+export function useCategoriesWithStats() {
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+  
+  // Create a single query that fetches all stats at once using useQuery with dependencies
+  const { data: allStats, isLoading: statsLoading } = useQuery({
+    queryKey: ['categories-with-stats', categories.map(c => c.id).sort()],
+    queryFn: async () => {
+      if (categories.length === 0) return {};
+      
+      // Fetch all stats in parallel
+      const statsPromises = categories.map(async (category) => {
+        try {
+          const response = await categoryApiService.getCategoryStats(category.id);
+          if (response.success && response.data) {
+            return { [category.id]: response.data };
+          }
+          return { [category.id]: { totalQuestions: 0, questionsByLevel: { easy: 0, medium: 0, hard: 0 }, totalSolutions: 0 } };
+        } catch (error) {
+          // Handle individual category stat failures gracefully
+          console.warn(`Failed to fetch stats for category ${category.id}:`, error);
+          return { [category.id]: { totalQuestions: 0, questionsByLevel: { easy: 0, medium: 0, hard: 0 }, totalSolutions: 0 } };
+        }
+      });
+      
+      const statsResults = await Promise.all(statsPromises);
+      return statsResults.reduce((acc, stat) => ({ ...acc, ...stat }), {});
+    },
+    enabled: categories.length > 0,
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    retry: 1, // Only retry once for stats
+  });
+
+  // Combine categories with their stats
+  const categoriesWithStats = categories.map((category) => {
+    const statsData = allStats?.[category.id];
+    return {
+      ...category,
+      totalQuestions: statsData?.totalQuestions || 0,
+      questionsByLevel: statsData?.questionsByLevel || { easy: 0, medium: 0, hard: 0 },
+      totalSolutions: statsData?.totalSolutions || 0,
+    };
+  });
+
+  const isLoading = categoriesLoading || statsLoading;
+
+  return {
+    data: categoriesWithStats,
+    isLoading,
+    error: null,
+  };
+}
+
+/**
  * Hook to create category (Admin/SuperAdmin only)
  */
 export function useCreateCategory() {
@@ -102,6 +158,8 @@ export function useCreateCategory() {
       // Invalidate and refetch categories list
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.LIST });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN.STATS });
+      // Also invalidate the combined categories-with-stats query
+      queryClient.invalidateQueries({ queryKey: ['categories-with-stats'] });
       
       toast.success(`Category "${newCategory.name}" created successfully`);
     },
@@ -148,6 +206,8 @@ export function useUpdateCategory() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.LIST });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.DETAIL(variables.id) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.STATS(variables.id) });
+      // Also invalidate the combined categories-with-stats query
+      queryClient.invalidateQueries({ queryKey: ['categories-with-stats'] });
       
       toast.success(`Category "${updatedCategory.name}" updated successfully`);
     },
@@ -184,6 +244,8 @@ export function useDeleteCategory() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.DETAIL(categoryId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.STATS(categoryId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN.STATS });
+      // Also invalidate the combined categories-with-stats query
+      queryClient.invalidateQueries({ queryKey: ['categories-with-stats'] });
 
       // Success message with warning about deleted questions
       if (result.deletedQuestions > 0) {

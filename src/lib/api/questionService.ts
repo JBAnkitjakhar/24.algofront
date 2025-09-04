@@ -1,4 +1,4 @@
-// src/lib/api/questionService.ts - Question management API service
+// src/lib/api/questionService.ts - UPDATED with sorting support
 
 import { apiClient } from './client';
 import type { ApiResponse } from '@/types/api';
@@ -14,8 +14,8 @@ import { QUESTION_ENDPOINTS } from '@/constants';
 
 class QuestionApiService {
   /**
-   * Get all questions with pagination and filters
-   * Matches: GET /api/questions?page=0&size=20&categoryId={id}&level={level}&search={term}
+   * Get all questions with pagination, filters, and sorting
+   * Matches: GET /api/questions?page=0&size=20&categoryId={id}&level={level}&search={term}&sort={field}&direction={asc|desc}
    */
   async getAllQuestions(params?: {
     page?: number;
@@ -23,6 +23,8 @@ class QuestionApiService {
     categoryId?: string;
     level?: string;
     search?: string;
+    sort?: string;        // NEW: Sort field
+    direction?: string;   // NEW: Sort direction
   }): Promise<ApiResponse<QuestionPageResponse>> {
     const queryParams = new URLSearchParams();
     if (params?.page !== undefined) queryParams.append('page', params.page.toString());
@@ -30,6 +32,10 @@ class QuestionApiService {
     if (params?.categoryId) queryParams.append('categoryId', params.categoryId);
     if (params?.level) queryParams.append('level', params.level);
     if (params?.search) queryParams.append('search', params.search);
+    
+    // ADD SORTING PARAMETERS
+    if (params?.sort) queryParams.append('sort', params.sort);
+    if (params?.direction) queryParams.append('direction', params.direction);
 
     const url = queryParams.toString() 
       ? `${QUESTION_ENDPOINTS.LIST}?${queryParams.toString()}`
