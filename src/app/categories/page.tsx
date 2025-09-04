@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import UserLayout from "@/components/layout/UserLayout";
-import { FolderOpen, Star, Clock, Search } from "lucide-react";
+import { FolderOpen, Search } from "lucide-react";
 import { useCategoriesWithStats } from "@/hooks/useCategoryManagement";
 interface CategoryWithStats {
   id: string;
@@ -156,68 +156,7 @@ function CategoryCard({ category, onClick }: {
     </div>
   );
 }
-
-interface CategoryStats {
-  totalQuestions: number;
-  totalSolved: number;
-  categoriesMastered: number;
-  overallProgress: number;
-}
-
-function CategoryStatsCard({ stats }: { stats: CategoryStats }) {
-  return (
-    <div className="mt-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 text-center">
-        Your Learning Progress
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Clock className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Total Problems Solved
-          </h3>
-          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-            {stats.totalSolved}
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Out of {stats.totalQuestions} problems
-          </p>
-        </div>
-        <div className="text-center">
-          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Star className="w-8 h-8 text-green-600 dark:text-green-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Categories Mastered
-          </h3>
-          <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-            {stats.categoriesMastered}
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            80%+ completion rate
-          </p>
-        </div>
-        <div className="text-center">
-          <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FolderOpen className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Overall Progress
-          </h3>
-          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-            {stats.overallProgress}%
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Keep up the great work!
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+ 
 function CategoriesContent() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -246,19 +185,7 @@ function CategoriesContent() {
       </div>
     );
   }
-
-  // Calculate real aggregate stats from API data
-  const totalQuestions = categoriesWithStats.reduce(
-    (sum, cat) => sum + cat.totalQuestions,
-    0
-  );
-  const stats: CategoryStats = {
-    totalQuestions,
-    totalSolved: 0, // TODO: Get from user progress API
-    categoriesMastered: 0, // TODO: Calculate from user progress
-    overallProgress: 0, // TODO: Calculate from user progress
-  };
-
+ 
   return (
     <UserLayout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -323,9 +250,6 @@ function CategoriesContent() {
               ))}
             </div>
           )}
-
-          {/* Quick Stats */}
-          {filteredCategories.length > 0 && <CategoryStatsCard stats={stats} />}
         </div>
       </div>
     </UserLayout>

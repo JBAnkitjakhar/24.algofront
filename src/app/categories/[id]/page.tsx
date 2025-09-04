@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import UserLayout from '@/components/layout/UserLayout';
@@ -27,10 +27,21 @@ function CategoryDetailContent() {
   const router = useRouter();
   const categoryId = params.id as string;
   
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // For immediate UI updates
+  const [searchTerm, setSearchTerm] = useState(''); // For API calls with debounce
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
   const [page, setPage] = useState(0);
   const pageSize = 20;
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(searchInput);
+      setPage(0); // Reset to first page when search changes
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // API calls
   const { data: category, isLoading: categoryLoading } = useCategoryById(categoryId);
@@ -41,6 +52,7 @@ function CategoryDetailContent() {
     size: pageSize,
     categoryId, // Pass categoryId to filter by this category
     level: selectedLevel === 'all' ? undefined : selectedLevel,
+    // Updated to only search in title, not description/statement
     search: searchTerm.trim() || undefined,
   }), [page, selectedLevel, searchTerm, categoryId]);
 
@@ -103,7 +115,6 @@ function CategoryDetailContent() {
   // Mock user progress data - replace with real data when user progress is implemented
   const userProgress = {
     solved: Math.floor(totalQuestions * 0.3), // 30% solved as example
-    attempted: Math.floor(totalQuestions * 0.5), // 50% attempted as example
   };
   const progressPercentage = getProgressPercentage(userProgress.solved, totalQuestions);
 
@@ -137,8 +148,8 @@ function CategoryDetailContent() {
                 Master {category.name.toLowerCase()} problems step by step
               </p>
 
-              {/* Progress Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+              {/* Updated Progress Stats - Only 3 items */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                   <div className="text-2xl font-bold text-gray-900 dark:text-white">
                     {totalQuestions}
@@ -151,12 +162,6 @@ function CategoryDetailContent() {
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">Solved</div>
                 </div>
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                    {userProgress.attempted}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Attempted</div>
-                </div>
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                   <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {progressPercentage}%
@@ -165,19 +170,7 @@ function CategoryDetailContent() {
                 </div>
               </div>
 
-              {/* Progress Bar */}
-              <div className="mt-6 max-w-2xl mx-auto">
-                <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  <span>Your Progress</span>
-                  <span>{userProgress.solved} of {totalQuestions} solved</span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300"
-                    style={{ width: `${progressPercentage}%` }}
-                  ></div>
-                </div>
-              </div>
+              {/* Removed Progress Bar */}
             </div>
           </div>
         </div>
@@ -228,14 +221,14 @@ function CategoryDetailContent() {
           {/* Filters */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Search */}
+              {/* Updated Search with debounce */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search problems..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search problems by title..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -278,7 +271,6 @@ function CategoryDetailContent() {
                 const levelColors = getDifficultyColor(question.level);
                 // TODO: Replace with real user progress data from API
                 const isSolved = false; // Will be fetched from user progress API
-                const isAttempted = false; // Will be fetched from user progress API
                 
                 return (
                   <div
@@ -292,8 +284,6 @@ function CategoryDetailContent() {
                         <div className="flex-shrink-0 pt-1">
                           {isSolved ? (
                             <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
-                          ) : isAttempted ? (
-                            <Circle className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
                           ) : (
                             <Circle className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                           )}
@@ -325,12 +315,7 @@ function CategoryDetailContent() {
                         </div>
                       </div>
 
-                      {/* Action Button */}
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
-                          {isSolved ? 'Review' : isAttempted ? 'Continue' : 'Start'}
-                        </button>
-                      </div>
+
                     </div>
                   </div>
                 );

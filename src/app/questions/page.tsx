@@ -5,7 +5,7 @@
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import UserLayout from '@/components/layout/UserLayout';
 import { BookOpen, Search, Filter, Clock } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuestions } from '@/hooks/useQuestionManagement';
 import { useCategories } from '@/hooks/useCategoryManagement';
@@ -15,12 +15,23 @@ import type { QuestionLevel } from '@/types';
 
 function QuestionsContent() {
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // For immediate UI updates
+  const [searchTerm, setSearchTerm] = useState(''); // For API calls with debounce
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [page, setPage] = useState(0);
   const pageSize = 20;
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(searchInput);
+      setPage(0); // Reset to first page when search changes
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // API calls
   const { data: categories = [] } = useCategories();
@@ -47,7 +58,8 @@ function QuestionsContent() {
   const totalPages = questionsData?.totalPages || 0;
   const totalElements = questionsData?.totalElements || 0;
 
-  const statuses = ['Solved', 'Attempted', 'Not Started'];
+  // Updated statuses - only Solved and Unsolved
+  const statuses = ['Solved', 'Unsolved'];
 
   const getDifficultyColor = (difficulty: QuestionLevel) => {
     return QUESTION_LEVEL_COLORS[difficulty];
@@ -62,13 +74,11 @@ function QuestionsContent() {
     setPage(0); // Reset to first page
   };
 
-  // Mock function for solved status - replace with real user progress data
+  // Updated mock function for solved status - only solved or not solved
   const getQuestionStatus = (questionId: string) => {
-    // Mock some solved/attempted status based on question ID
+    // Mock some solved status based on question ID
     const hash = questionId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    if (hash % 4 === 0) return { solved: true, attempted: false };
-    if (hash % 3 === 0) return { solved: false, attempted: true };
-    return { solved: false, attempted: false };
+    return { solved: hash % 3 === 0 }; // Simplified to just solved true/false
   };
 
   // Filter questions by status (client-side filtering for mock data)
@@ -77,8 +87,7 @@ function QuestionsContent() {
     
     const status = getQuestionStatus(question.id);
     if (selectedStatus === 'Solved') return status.solved;
-    if (selectedStatus === 'Attempted') return status.attempted && !status.solved;
-    if (selectedStatus === 'Not Started') return !status.solved && !status.attempted;
+    if (selectedStatus === 'Unsolved') return !status.solved;
     
     return true;
   });
@@ -139,17 +148,14 @@ function QuestionsContent() {
           {/* Filters */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Search */}
+              {/* Updated Search with debounce */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search questions..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setPage(0);
-                  }}
+                  placeholder="Search questions by title..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -181,7 +187,7 @@ function QuestionsContent() {
                 ))}
               </select>
 
-              {/* Status Filter */}
+              {/* Updated Status Filter - Only Solved and Unsolved */}
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
