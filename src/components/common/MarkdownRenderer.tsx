@@ -2,8 +2,8 @@
 
 'use client';
 
-import { useMemo } from 'react';
 import Image from 'next/image';
+import { useMemo } from 'react';
 
 interface MarkdownRendererProps {
   content: string;
@@ -120,21 +120,21 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
             // Handle headers
             if (line.startsWith('### ')) {
               return (
-                <h3 key={lineIndex} className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 key={lineIndex} className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                   {line.slice(4)}
                 </h3>
               );
             }
             if (line.startsWith('## ')) {
               return (
-                <h2 key={lineIndex} className="text-xl font-semibold text-gray-900 mb-3">
+                <h2 key={lineIndex} className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
                   {line.slice(3)}
                 </h2>
               );
             }
             if (line.startsWith('# ')) {
               return (
-                <h1 key={lineIndex} className="text-2xl font-bold text-gray-900 mb-4">
+                <h1 key={lineIndex} className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                   {line.slice(2)}
                 </h1>
               );
@@ -147,7 +147,7 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
             processedLine = processedLine.replace(/\*(.*?)\*/g, '<em>$1</em>');
             
             // Handle inline code
-            processedLine = processedLine.replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">$1</code>');
+            processedLine = processedLine.replace(/`(.*?)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>');
 
             // Handle lists
             if (line.startsWith('- ') || line.startsWith('* ')) {
@@ -165,7 +165,7 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
             // Regular paragraph line
             if (line.trim()) {
               return (
-                <p key={lineIndex} className="text-gray-800 leading-relaxed mb-2 last:mb-0" dangerouslySetInnerHTML={{ __html: processedLine }} />
+                <p key={lineIndex} className="text-gray-800 dark:text-gray-200 leading-relaxed mb-2 last:mb-0" dangerouslySetInnerHTML={{ __html: processedLine }} />
               );
             }
 
@@ -178,12 +178,12 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
 
   const renderCodeBlock = (code: string, language: string) => {
     return (
-      <div className="my-4 bg-gray-900 rounded-lg overflow-hidden">
-        <div className="bg-gray-800 px-4 py-2 text-xs text-gray-300 font-medium">
+      <div className="my-4 bg-gray-900 dark:bg-gray-950 rounded-lg overflow-hidden">
+        <div className="bg-gray-800 dark:bg-gray-900 px-4 py-2 text-xs text-gray-300 dark:text-gray-400 font-medium">
           {language.charAt(0).toUpperCase() + language.slice(1)}
         </div>
         <pre className="p-4 overflow-x-auto">
-          <code className="text-sm text-gray-100 font-mono whitespace-pre">
+          <code className="text-sm text-gray-100 dark:text-gray-200 font-mono whitespace-pre">
             {code}
           </code>
         </pre>
@@ -191,6 +191,7 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
     );
   };
 
+  // FIXED: Use Next.js Image without forced dimensions to preserve Cloudinary's actual size
   const renderImage = (url: string, alt: string) => {
     return (
       <div className="my-6 flex justify-center">
@@ -198,14 +199,21 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
           <Image
             src={url}
             alt={alt}
-            width={600}
-            height={400}
-            className="rounded-lg border border-gray-200 shadow-sm max-w-full h-auto"
-            style={{ objectFit: 'contain' }}
-            unoptimized // Since these are Cloudinary URLs
+            width={0}
+            height={0}
+            sizes="100vw"
+            className="rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm max-w-full h-auto w-auto"
+            style={{ 
+              objectFit: 'contain',
+              maxWidth: '100%',
+              height: 'auto',
+              width: 'auto'
+            }}
+            unoptimized
+            priority={false}
           />
           {alt && alt !== 'Question Image' && (
-            <p className="text-sm text-gray-600 text-center mt-2 italic">
+            <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-2 italic">
               {alt}
             </p>
           )}
@@ -215,7 +223,7 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
   };
 
   return (
-    <div className={`prose prose-gray max-w-none ${className}`}>
+    <div className={`prose prose-gray dark:prose-invert max-w-none ${className}`}>
       {parsedContent.map((element, index) => {
         switch (element.type) {
           case 'text':
@@ -250,19 +258,19 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
 // Example usage component for question display
 export function QuestionDisplay({ question }: { question: { title: string; statement: string; level: string } }) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{question.title}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{question.title}</h1>
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          question.level === 'EASY' ? 'bg-green-100 text-green-800' :
-          question.level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
-          'bg-red-100 text-red-800'
+          question.level === 'EASY' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+          question.level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+          'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
         }`}>
           {question.level}
         </span>
       </div>
       
-      <div className="border-t border-gray-200 pt-4">
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
         <MarkdownRenderer content={question.statement} />
       </div>
     </div>

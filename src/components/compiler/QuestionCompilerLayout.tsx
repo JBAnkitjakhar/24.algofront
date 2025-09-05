@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import {
   Language,
-  SUPPORTED_LANGUAGES,
   getDefaultLanguage,
 } from "@/lib/compiler/languages";
 import { LanguageSelector } from "./LanguageSelector";
@@ -114,9 +113,23 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
 
   const { mutate: executeCode, isPending, error } = useCodeExecution();
 
-  // Local storage keys for persistence
-  const getStorageKey = (language: string, type: "code" | "input") =>
-    `question_${question.id}_${language}_${type}`;
+  // Local storage keys for persistence - wrapped in useCallback to fix React Hook dependency issues
+  const getStorageKey = useCallback(
+    (language: string, type: "code" | "input") =>
+      `question_${question.id}_${language}_${type}`,
+    [question.id]
+  );
+
+  // Get code snippet for current language if available - wrapped in useCallback
+  const getInitialCodeForLanguage = useCallback(
+    (language: Language): string => {
+      const snippet = question.codeSnippets?.find(
+        (snippet) => snippet.language.toLowerCase() === language.name.toLowerCase()
+      );
+      return snippet?.code || language.defaultCode;
+    },
+    [question.codeSnippets]
+  );
 
   // Debounced resize function to prevent Monaco Editor errors
   const debouncedResizeEditor = useCallback(() => {
@@ -211,7 +224,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     if (code && code !== selectedLanguage.defaultCode) {
       localStorage.setItem(getStorageKey(selectedLanguage.name, "code"), code);
     }
-  }, [code, selectedLanguage.name, selectedLanguage.defaultCode, question.id]);
+  }, [code, selectedLanguage.name, selectedLanguage.defaultCode, question.id, getStorageKey]);
 
   // Save input to localStorage when it changes
   useEffect(() => {
@@ -221,7 +234,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
         input
       );
     }
-  }, [input, selectedLanguage.name, question.id]);
+  }, [input, selectedLanguage.name, question.id, getStorageKey]);
 
   // Function to check if code requires input
   const doesCodeRequireInput = (codeString: string): boolean => {
@@ -418,14 +431,6 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     } catch (error) {
       console.warn("Failed to define custom themes (safe to ignore):", error);
     }
-  };
-
-  // Get code snippet for current language if available
-  const getInitialCodeForLanguage = (language: Language): string => {
-    const snippet = question.codeSnippets?.find(
-      (snippet) => snippet.language.toLowerCase() === language.name.toLowerCase()
-    );
-    return snippet?.code || language.defaultCode;
   };
 
   // Update code when language changes to use question's code snippet
