@@ -146,7 +146,7 @@ export default function UserLayout({ children }: UserLayoutProps) {
     return pathname.startsWith(href);
   };
 
-  const sidebarWidth = isCollapsed ? 'w-16' : 'w-64';
+  const sidebarWidth = isCollapsed ? 'w-14' : 'w-64';
 
   if (!user) {
     return (
@@ -180,7 +180,7 @@ export default function UserLayout({ children }: UserLayoutProps) {
         bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-lg
       `}>
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className={`flex items-center ${isCollapsed && !isMobile ? 'justify-center px-2' : 'justify-between px-4'} py-4 border-b border-gray-200 dark:border-gray-700`}>
           {(!isCollapsed || isMobile) && (
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -194,7 +194,9 @@ export default function UserLayout({ children }: UserLayoutProps) {
           
           <button
             onClick={toggleSidebar}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${
+              isCollapsed && !isMobile ? 'w-full flex justify-center' : ''
+            }`}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {isMobile ? (
@@ -206,7 +208,7 @@ export default function UserLayout({ children }: UserLayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        <nav className={`flex-1 py-6 space-y-2 overflow-y-auto ${isCollapsed && !isMobile ? 'px-2' : 'px-4'}`}>
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             const active = isActiveRoute(item.href);
@@ -216,7 +218,11 @@ export default function UserLayout({ children }: UserLayoutProps) {
                 key={item.id}
                 onClick={() => handleNavigation(item.href)}
                 className={`
-                  w-full flex items-center px-3 py-3 rounded-lg text-left transition-all duration-200 group
+                  w-full flex items-center rounded-lg text-left transition-all duration-200 group
+                  ${isCollapsed && !isMobile 
+                    ? 'px-2 py-3 justify-center' 
+                    : 'px-3 py-3'
+                  }
                   ${active 
                     ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800' 
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -244,10 +250,16 @@ export default function UserLayout({ children }: UserLayoutProps) {
 
         {/* Admin Link */}
         {isAdmin() && (
-          <div className="px-4 py-2">
+          <div className={`py-2 ${isCollapsed && !isMobile ? 'px-2' : 'px-4'}`}>
             <button
               onClick={() => handleNavigation('/admin')}
-              className="w-full flex items-center px-3 py-2 rounded-lg text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+              className={`
+                w-full flex items-center rounded-lg text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors
+                ${isCollapsed && !isMobile 
+                  ? 'px-2 py-2 justify-center' 
+                  : 'px-3 py-2'
+                }
+              `}
               title={isCollapsed ? 'Admin Panel' : ''}
             >
               <User size={18} className="flex-shrink-0" />
@@ -259,18 +271,18 @@ export default function UserLayout({ children }: UserLayoutProps) {
         )}
 
         {/* User Profile & Logout */}
-        <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-4">
+        <div className={`border-t border-gray-200 dark:border-gray-700 py-4 ${isCollapsed && !isMobile ? 'px-2' : 'px-4'}`}>
           <div className={`flex items-center ${isCollapsed && !isMobile ? 'justify-center' : 'space-x-3'}`}>
             {user.image ? (
               <Image
                 src={user.image}
                 alt={user.name}
-                width={40}
-                height={40}
+                width={isCollapsed && !isMobile ? 32 : 40}
+                height={isCollapsed && !isMobile ? 32 : 40}
                 className="rounded-full flex-shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
+              <div className={`${isCollapsed && !isMobile ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-sm'} bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0`}>
                 {stringUtils.getInitials(user.name)}
               </div>
             )}
@@ -303,7 +315,7 @@ export default function UserLayout({ children }: UserLayoutProps) {
               className="w-full mt-3 flex items-center justify-center p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
               title="Logout"
             >
-              <LogOut size={18} />
+              <LogOut size={16} />
             </button>
           )}
         </div>
