@@ -1,4 +1,4 @@
-// src/app/questions/[id]/page.tsx  
+// src/app/questions/[id]/page.tsx - CLEAN: Uses global CSS styles
 
 'use client';
 
@@ -29,7 +29,6 @@ import { useQuestionProgress, useUpdateQuestionProgress } from '@/hooks/useUserP
 import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
 import type { Solution } from '@/types';
-import { CubeIcon } from '@heroicons/react/24/outline';
 
 function QuestionDetailContent() {
   const params = useParams();
@@ -183,7 +182,7 @@ function QuestionDetailContent() {
                 <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-blue-500/20"></div>
               </div>
 
-              {/* Right Panel - Question Information */}
+              {/* Right Panel - Question Information with Custom Scrollbar */}
               <div
                 className="flex flex-col bg-white dark:bg-gray-800"
                 style={{ width: `${100 - leftPanelWidth}%` }}
@@ -249,8 +248,8 @@ function QuestionDetailContent() {
                   </nav>
                 </div>
 
-                {/* SCROLLABLE CONTENT AREA */}
-                <div className="flex-1 overflow-auto">
+                {/* SCROLLABLE CONTENT AREA with Custom Scrollbar */}
+                <div className="flex-1 overflow-auto custom-scrollbar">
                   {activeTab === 'description' && (
                     <div className="p-4">
                       {/* SCROLLABLE: Question Title, Level, Category, and Mark Solved Button */}
@@ -417,12 +416,6 @@ function QuestionDetailContent() {
                                 <span className="inline-flex items-center px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded text-xs">
                                   <FolderOpen className="w-3 h-3 mr-1" />
                                   Resources
-                                </span>
-                              )}
-                              {solution.visualizerFileIds && solution.visualizerFileIds.length > 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 rounded text-xs">
-                                  <CubeIcon className="w-3 h-3 mr-1" />
-                                  {solution.visualizerFileIds.length} Visualizer{solution.visualizerFileIds.length !== 1 ? 's' : ''}
                                 </span>
                               )}
                               {solution.imageUrls && solution.imageUrls.length > 0 && (

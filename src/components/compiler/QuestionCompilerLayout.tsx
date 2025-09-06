@@ -1,4 +1,4 @@
-// src/components/compiler/QuestionCompilerLayout.tsx - FIXED: Compact header and working themes
+// src/components/compiler/QuestionCompilerLayout.tsx
 
 "use client";
 
@@ -581,7 +581,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
               className="px-1 py-0.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
               title="Decrease font size"
             >
-              <ZoomOut size={10} />
+              <ZoomOut size={14} />
             </button>
             <span className="text-xs text-gray-500 min-w-[2.5rem] text-center">
               {fontSize}px
@@ -591,7 +591,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
               className="px-1 py-0.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
               title="Increase font size"
             >
-              <ZoomIn size={10} />
+              <ZoomIn size={14} />
             </button>
           </div>
 
@@ -602,7 +602,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
               className="px-1 py-0.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
               title="Change editor theme"
             >
-              <Palette size={10} />
+              <Palette size={14} />
             </button>
 
             {showThemeSelector && (
