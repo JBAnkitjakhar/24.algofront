@@ -1,4 +1,4 @@
-// src/components/questions/SolutionViewer.tsx - FIXED TO MATCH ADMIN APPROACH
+// src/components/questions/SolutionViewer.tsx - FINAL CLEAN VERSION
 
 'use client';
 
@@ -11,9 +11,9 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
-import { EmbeddedVisualizer } from '@/components/common/EmbeddedVisualizer';
 import { CodeSyntaxHighlighter } from '@/components/common/CodeSyntaxHighlighter';
-import { useVisualizerFilesBySolution } from '@/hooks/useSolutionManagement'; // ADDED: Import the hook
+import { useVisualizerFilesBySolution } from '@/hooks/useSolutionManagement';
+import { cookieManager } from '@/lib/utils/auth';
 import type { Solution } from '@/types';
 import { CubeIcon, CubeTransparentIcon } from '@heroicons/react/24/outline';
 
@@ -27,10 +27,13 @@ type ViewMode = 'code' | 'visualizer';
 export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('code');
   const [selectedVisualizerId, setSelectedVisualizerId] = useState<string | null>(null);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(50); // Percentage
+  const [leftPanelWidth, setLeftPanelWidth] = useState(50);
+  const [blobUrl, setBlobUrl] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>('');
   const isResizingRef = useRef(false);
 
-  // FIXED: Fetch visualizer files data using the same approach as admin section
+  // Fetch visualizer files data
   const { 
     data: visualizerFiles, 
     isLoading: visualizerFilesLoading,
@@ -38,22 +41,68 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
   } = useVisualizerFilesBySolution(solution.id);
 
   const hasCodeSnippet = solution.codeSnippet && solution.codeSnippet.code.trim();
-  // FIXED: Check if we have actual visualizer files data, not just IDs
-  const hasVisualizers = visualizerFiles?.data && visualizerFiles.data.length > 0;
+  const hasVisualizers = Boolean(visualizerFiles?.data && visualizerFiles.data.length > 0);
   const hasYouTube = solution.youtubeLink;
   const hasDrive = solution.driveLink;
+
+  // Fetch HTML content and create blob URL (same approach as popup)
+  const fetchVisualizerContent = useCallback(async (fileId: string) => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const token = cookieManager.getToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+      const url = `${apiBaseUrl}/files/visualizers/${fileId}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html',
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load visualizer: ${response.status}`);
+      }
+
+      const htmlText = await response.text();
+
+      // Create blob URL like the popup does
+      const blob = new Blob([htmlText], { type: 'text/html' });
+      const url_blob = URL.createObjectURL(blob);
+      
+      setBlobUrl(url_blob);
+
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load visualizer';
+      setError(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const handleVisualizerSelect = useCallback((fileId: string) => {
     setSelectedVisualizerId(fileId);
     setViewMode('visualizer');
-  }, []);
+    fetchVisualizerContent(fileId);
+  }, [fetchVisualizerContent]);
 
   const handleBackToCode = useCallback(() => {
     setViewMode('code');
     setSelectedVisualizerId(null);
+    setBlobUrl('');
+    setError('');
   }, []);
 
-  // Handle resizing for left/right panels
+  // Enhanced panel resizing with smooth behavior
   const handlePanelMouseDown = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
@@ -64,33 +113,37 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
       const startWidth = leftPanelWidth;
 
       const handleMouseMove = (e: MouseEvent) => {
+        if (!isResizingRef.current) return;
+        
         e.preventDefault();
         const deltaX = e.clientX - startX;
         const containerWidth = window.innerWidth;
         const deltaPercent = (deltaX / containerWidth) * 100;
-        const newWidth = Math.min(Math.max(startWidth + deltaPercent, 30), 70);
+        const newWidth = Math.min(Math.max(startWidth + deltaPercent, 25), 75);
 
         setLeftPanelWidth(newWidth);
       };
 
       const handleMouseUp = (e: MouseEvent) => {
         e.preventDefault();
+        isResizingRef.current = false;
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
         document.body.style.userSelect = "";
         document.body.style.cursor = "";
-        isResizingRef.current = false;
+        document.body.style.pointerEvents = "";
       };
 
       document.body.style.userSelect = "none";
       document.body.style.cursor = "col-resize";
+      document.body.style.pointerEvents = "none";
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
     [leftPanelWidth]
   );
 
-  // Load saved panel width
+  // Load and save panel width
   useEffect(() => {
     const savedWidth = localStorage.getItem("solution_viewer_panel_width");
     if (savedWidth) {
@@ -98,35 +151,26 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
     }
   }, []);
 
-  // Save panel width
   useEffect(() => {
     localStorage.setItem("solution_viewer_panel_width", leftPanelWidth.toString());
   }, [leftPanelWidth]);
 
-  // FIXED: Handle visualizer file not found errors
-  const handleVisualizerFileNotFound = useCallback((fileId: string) => {
-    console.warn('Visualizer file not found:', fileId);
-    setViewMode('code');
-    setSelectedVisualizerId(null);
-  }, []);
-
-  // Debug logging for visualizer files
+  // Cleanup blob URL when component unmounts or changes
   useEffect(() => {
-    console.log('[SolutionViewer] Solution ID:', solution.id);
-    console.log('[SolutionViewer] Visualizer Files Loading:', visualizerFilesLoading);
-    console.log('[SolutionViewer] Visualizer Files Error:', visualizerFilesError);
-    console.log('[SolutionViewer] Visualizer Files Data:', visualizerFiles);
-    console.log('[SolutionViewer] Has Visualizers:', hasVisualizers);
-    console.log('[SolutionViewer] Solution visualizerFileIds:', solution.visualizerFileIds);
-  }, [solution.id, visualizerFilesLoading, visualizerFilesError, visualizerFiles, hasVisualizers, solution.visualizerFileIds]);
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [blobUrl]);
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Main Content Area with Resizable Panels */}
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 relative">
         {/* Left Panel - Code or Visualizer */}
         <div 
-          className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full"
+          className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full relative"
           style={{ width: `${leftPanelWidth}%` }}
         >
           {viewMode === 'code' ? (
@@ -165,19 +209,41 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
               </div>
             </div>
           ) : (
-            // Visualizer Panel
+            // Visualizer Panel with Blob URL Approach
             <div className="h-full flex flex-col">
-              {/* Visualizer Container */}
-              <div className="flex-1 min-h-0">
-                {selectedVisualizerId ? (
-                  <EmbeddedVisualizer
-                    fileId={selectedVisualizerId}
-                    title="Algorithm Visualizer"
-                    height="100%"
-                    className="h-full border-0 rounded-none"
-                    onError={(error) => console.error('Visualizer error:', error)}
-                    onFileNotFound={handleVisualizerFileNotFound}
-                  />
+              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-2 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
+                    <CubeTransparentIcon className="w-4 h-4 mr-2" />
+                    Algorithm Visualizer
+                  </h3>
+                </div>
+              </div>
+              
+              <div className="flex-1 min-h-0 p-4">
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <span className="ml-3 text-gray-600 dark:text-gray-300 text-sm">
+                      Loading visualizer...
+                    </span>
+                  </div>
+                ) : error ? (
+                  <div className="flex items-center justify-center h-full text-red-600 dark:text-red-400">
+                    <div className="text-center">
+                      <div className="text-sm font-medium">Failed to load visualizer</div>
+                      <div className="text-xs mt-1 text-red-500 dark:text-red-400">{error}</div>
+                    </div>
+                  </div>
+                ) : blobUrl ? (
+                  <div className="w-full h-full border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+                    <iframe
+                      src={blobUrl}
+                      title="Algorithm Visualizer"
+                      className="w-full h-full border-0"
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                    />
+                  </div>
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
                     <div className="text-center">
@@ -191,12 +257,23 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
           )}
         </div>
 
-        {/* Resizer */}
+        {/* Enhanced Resizer with better visual feedback */}
         <div
-          className="w-1 bg-gray-300 dark:bg-gray-600 cursor-col-resize hover:bg-blue-500 dark:hover:bg-blue-400 transition-colors relative group flex-shrink-0"
+          className={`w-1 cursor-col-resize relative group flex-shrink-0 transition-colors ${
+            isResizingRef.current 
+              ? 'bg-blue-500 dark:bg-blue-400' 
+              : 'bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 dark:hover:bg-blue-400'
+          }`}
           onMouseDown={handlePanelMouseDown}
         >
-          <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-blue-500/20"></div>
+          <div className="absolute inset-y-0 -left-2 -right-2 group-hover:bg-blue-500/10"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex flex-col space-y-0.5">
+              <div className="w-0.5 h-1 bg-white rounded-full"></div>
+              <div className="w-0.5 h-1 bg-white rounded-full"></div>
+              <div className="w-0.5 h-1 bg-white rounded-full"></div>
+            </div>
+          </div>
         </div>
 
         {/* Right Panel - Solution Explanation */}
@@ -206,7 +283,6 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
         >
           <div className="bg-gray-50 dark:bg-gray-700 px-4 py-2 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
             <div className="flex items-center justify-between">
-              
               {/* Action buttons */}
               <div className="flex items-center space-x-2">
                 {/* Back Button */}
@@ -248,14 +324,14 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
                   </a>
                 )}
 
-                {/* FIXED: Visualizer Buttons - Use actual file data */}
+                {/* Visualizer Buttons */}
                 {visualizerFilesLoading ? (
-                  <div className="text-xs text-gray-500">Loading visualizers...</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Loading visualizers...</div>
                 ) : visualizerFilesError ? (
-                  <div className="text-xs text-red-500">Failed to load visualizers</div>
+                  <div className="text-xs text-red-500 dark:text-red-400">Failed to load visualizers</div>
                 ) : hasVisualizers ? (
                   <div className="flex items-center space-x-1">
-                    {visualizerFiles.data.map((file) => (
+                    {visualizerFiles?.data?.map((file) => (
                       <button
                         key={file.fileId}
                         onClick={() => handleVisualizerSelect(file.fileId)}
@@ -266,9 +342,7 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
                         }`}
                       >
                         <CubeTransparentIcon className="w-3 h-3" />
-                        <span className="font-medium">
-                          Visualizer
-                        </span>
+                        <span className="font-medium">Visualizer</span>
                       </button>
                     ))}
                   </div>
@@ -299,6 +373,11 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
             </div>
           </div>
         </div>
+
+        {/* Resizing overlay to prevent iframe interference during resize */}
+        {isResizingRef.current && (
+          <div className="absolute inset-0 bg-transparent cursor-col-resize z-10" />
+        )}
       </div>
     </div>
   );

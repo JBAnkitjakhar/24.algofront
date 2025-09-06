@@ -1,4 +1,4 @@
-// src/components/admin/SolutionRichTextEditor.tsx - UPDATED with CodeSyntaxHighlighter
+// src/components/admin/SolutionRichTextEditor.tsx  
 
 "use client";
 
