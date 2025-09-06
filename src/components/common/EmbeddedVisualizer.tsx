@@ -1,4 +1,4 @@
-// src/components/common/EmbeddedVisualizer.tsx - FIXED VERSION with proper dependencies
+// src/components/common/EmbeddedVisualizer.tsx  
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import {

@@ -1,4 +1,4 @@
-// src/app/questions/[id]/page.tsx - FIXED: Complete code with syntax errors resolved
+// src/app/questions/[id]/page.tsx - FIXED: Complete code with proper solution viewer isolation
 
 'use client';
 
@@ -155,12 +155,14 @@ function QuestionDetailContent() {
   return (
     <UserLayout>
       <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-        {/* Show Solution Viewer when a solution is selected */}
+        {/* FIXED: Show Solution Viewer in completely isolated container */}
         {selectedSolution ? (
-          <SolutionViewer 
-            solution={selectedSolution} 
-            onBack={() => setSelectedSolution(null)}
-          />
+          <div className="h-full">
+            <SolutionViewer 
+              solution={selectedSolution} 
+              onBack={() => setSelectedSolution(null)}
+            />
+          </div>
         ) : (
           <>
             {/* Main Content - Split Layout */}
@@ -313,7 +315,7 @@ function QuestionDetailContent() {
                   </nav>
                 </div>
 
-                {/* Tab Content */}
+                {/* FIXED: Tab Content - Only show when NOT viewing a solution */}
                 <div className="flex-1 overflow-auto">
                   {activeTab === 'description' && (
                     <div className="p-6">
@@ -448,6 +450,7 @@ function QuestionDetailContent() {
                     </div>
                   )}
 
+                  {/* FIXED: This is the submissions tab content that was showing up in solution viewer */}
                   {activeTab === 'submissions' && (
                     <div className="p-6 text-center py-12">
                       <Play className="w-12 h-12 text-gray-400 mx-auto mb-4" />
