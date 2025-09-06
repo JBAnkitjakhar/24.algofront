@@ -431,11 +431,11 @@ export function EmbeddedVisualizer({
               }`}
             ></span>
             {title}
-            {isInteractive && (
-              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                Interactive
-              </span>
-            )}
+            {/* {isInteractive && (
+              // <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+              //   Interactive
+              // </span>
+            )} */}
           </h4>
           <div className="flex items-center space-x-2">
             <button

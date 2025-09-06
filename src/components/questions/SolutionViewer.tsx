@@ -1,4 +1,4 @@
-// src/components/questions/SolutionViewer.tsx - MINIMAL FIXES ONLY
+// src/components/questions/SolutionViewer.tsx - FIXED TO MATCH ADMIN APPROACH
 
 'use client';
 
@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
 import { EmbeddedVisualizer } from '@/components/common/EmbeddedVisualizer';
-import { CodeSyntaxHighlighter } from '@/components/common/CodeSyntaxHighlighter'; // NEW IMPORT
+import { CodeSyntaxHighlighter } from '@/components/common/CodeSyntaxHighlighter';
+import { useVisualizerFilesBySolution } from '@/hooks/useSolutionManagement'; // ADDED: Import the hook
 import type { Solution } from '@/types';
 import { CubeIcon, CubeTransparentIcon } from '@heroicons/react/24/outline';
 
@@ -29,8 +30,16 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // Percentage
   const isResizingRef = useRef(false);
 
+  // FIXED: Fetch visualizer files data using the same approach as admin section
+  const { 
+    data: visualizerFiles, 
+    isLoading: visualizerFilesLoading,
+    error: visualizerFilesError 
+  } = useVisualizerFilesBySolution(solution.id);
+
   const hasCodeSnippet = solution.codeSnippet && solution.codeSnippet.code.trim();
-  const hasVisualizers = solution.visualizerFileIds && solution.visualizerFileIds.length > 0;
+  // FIXED: Check if we have actual visualizer files data, not just IDs
+  const hasVisualizers = visualizerFiles?.data && visualizerFiles.data.length > 0;
   const hasYouTube = solution.youtubeLink;
   const hasDrive = solution.driveLink;
 
@@ -94,17 +103,34 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
     localStorage.setItem("solution_viewer_panel_width", leftPanelWidth.toString());
   }, [leftPanelWidth]);
 
+  // FIXED: Handle visualizer file not found errors
+  const handleVisualizerFileNotFound = useCallback((fileId: string) => {
+    console.warn('Visualizer file not found:', fileId);
+    setViewMode('code');
+    setSelectedVisualizerId(null);
+  }, []);
+
+  // Debug logging for visualizer files
+  useEffect(() => {
+    console.log('[SolutionViewer] Solution ID:', solution.id);
+    console.log('[SolutionViewer] Visualizer Files Loading:', visualizerFilesLoading);
+    console.log('[SolutionViewer] Visualizer Files Error:', visualizerFilesError);
+    console.log('[SolutionViewer] Visualizer Files Data:', visualizerFiles);
+    console.log('[SolutionViewer] Has Visualizers:', hasVisualizers);
+    console.log('[SolutionViewer] Solution visualizerFileIds:', solution.visualizerFileIds);
+  }, [solution.id, visualizerFilesLoading, visualizerFilesError, visualizerFiles, hasVisualizers, solution.visualizerFileIds]);
+
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* FIXED: Full Height Main Content Area with Resizable Panels */}
+      {/* Main Content Area with Resizable Panels */}
       <div className="flex-1 flex min-h-0">
-        {/* Left Panel - Code or Visualizer - FULL HEIGHT */}
+        {/* Left Panel - Code or Visualizer */}
         <div 
           className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full"
           style={{ width: `${leftPanelWidth}%` }}
         >
           {viewMode === 'code' ? (
-            // FIXED: Code Solution Panel with CodeSyntaxHighlighter instead of green text
+            // Code Solution Panel
             <div className="h-full flex flex-col">
               <div className="bg-gray-50 dark:bg-gray-700 px-4 py-2 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
                 <div className="flex items-center justify-between">
@@ -120,7 +146,6 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
                 </div>
               </div>
               
-              {/* FIXED: Replace green code with CodeSyntaxHighlighter */}
               <div className="flex-1 min-h-0 overflow-auto">
                 {hasCodeSnippet ? (
                   <CodeSyntaxHighlighter
@@ -140,40 +165,26 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
               </div>
             </div>
           ) : (
-            // FIXED: Visualizer Panel with full height
+            // Visualizer Panel
             <div className="h-full flex flex-col">
-              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-2 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
-                    <CubeIcon className="w-4 h-4 mr-2" />
-                    Interactive Visualizer
-                  </h3>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={handleBackToCode}
-                      className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                    >
-                      Back to Code
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              {/* FIXED: Full height visualizer container */}
+              {/* Visualizer Container */}
               <div className="flex-1 min-h-0">
-                {selectedVisualizerId && (
+                {selectedVisualizerId ? (
                   <EmbeddedVisualizer
                     fileId={selectedVisualizerId}
                     title="Algorithm Visualizer"
                     height="100%"
                     className="h-full border-0 rounded-none"
                     onError={(error) => console.error('Visualizer error:', error)}
-                    onFileNotFound={(fileId) => {
-                      console.warn('Visualizer file not found:', fileId);
-                      setViewMode('code');
-                      setSelectedVisualizerId(null);
-                    }}
+                    onFileNotFound={handleVisualizerFileNotFound}
                   />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                    <div className="text-center">
+                      <CubeIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-sm">No visualizer selected</p>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -188,18 +199,15 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
           <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-blue-500/20"></div>
         </div>
 
-        {/* Right Panel - Solution Explanation (unchanged) */}
+        {/* Right Panel - Solution Explanation */}
         <div 
           className="bg-white dark:bg-gray-800 flex flex-col h-full"
           style={{ width: `${100 - leftPanelWidth}%` }}
         >
           <div className="bg-gray-50 dark:bg-gray-700 px-4 py-2 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                Solution Explanation
-              </h3>
               
-              {/* All action buttons moved here */}
+              {/* Action buttons */}
               <div className="flex items-center space-x-2">
                 {/* Back Button */}
                 <button
@@ -240,26 +248,31 @@ export function SolutionViewer({ solution, onBack }: SolutionViewerProps) {
                   </a>
                 )}
 
-                {/* Visualizer Buttons */}
-                {hasVisualizers && (
+                {/* FIXED: Visualizer Buttons - Use actual file data */}
+                {visualizerFilesLoading ? (
+                  <div className="text-xs text-gray-500">Loading visualizers...</div>
+                ) : visualizerFilesError ? (
+                  <div className="text-xs text-red-500">Failed to load visualizers</div>
+                ) : hasVisualizers ? (
                   <div className="flex items-center space-x-1">
-                    {solution.visualizerFileIds!.map((fileId, index) => (
+                    {visualizerFiles.data.map((file) => (
                       <button
-                        key={fileId}
-                        onClick={() => handleVisualizerSelect(fileId)}
+                        key={file.fileId}
+                        onClick={() => handleVisualizerSelect(file.fileId)}
                         className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors text-xs ${
-                          viewMode === 'visualizer' && selectedVisualizerId === fileId
+                          viewMode === 'visualizer' && selectedVisualizerId === file.fileId
                             ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
                             : 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30'
                         }`}
-                        title={`Open visualizer ${index + 1}`}
                       >
                         <CubeTransparentIcon className="w-3 h-3" />
-                        <span className="font-medium">Visual {index + 1}</span>
+                        <span className="font-medium">
+                          Visualizer
+                        </span>
                       </button>
                     ))}
                   </div>
-                )}
+                ) : null}
 
                 {/* Code View Button */}
                 {hasCodeSnippet && viewMode !== 'code' && (
