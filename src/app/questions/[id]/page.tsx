@@ -1,4 +1,4 @@
-// src/app/questions/[id]/page.tsx - OPTIMIZED: Compact header with reduced spacing
+// src/app/questions/[id]/page.tsx  
 
 'use client';
 
@@ -381,23 +381,10 @@ function QuestionDetailContent() {
                           >
                             <div className="flex items-start justify-between mb-3">
                               <div>
-                                <h3 className="text-base font-medium text-gray-900 dark:text-white">
-                                  Official Solution
-                                </h3>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
                                   By {solution.createdByName} • {dateUtils.formatRelativeTime(solution.createdAt)}
                                 </p>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedSolution(solution);
-                                }}
-                                className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
-                              >
-                                <span>View</span>
-                                <ChevronRight className="w-3 h-3" />
-                              </button>
                             </div>
                             
                             {/* Solution Preview */}

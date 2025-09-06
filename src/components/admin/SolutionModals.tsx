@@ -2,7 +2,7 @@
 
 "use client";
 
-import { Fragment, useState, useEffect, useCallback } from "react";
+import { Fragment, useState, useEffect, useCallback, useMemo } from "react";
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from "@headlessui/react";
 import {
   XMarkIcon,
@@ -13,10 +13,13 @@ import {
   EyeIcon,
   PlayIcon,
   FolderOpenIcon,
+  MagnifyingGlassIcon,
+  ChevronUpDownIcon,
+  CheckIcon,
 } from "@heroicons/react/24/outline";
 import { SolutionRichTextEditor } from "./SolutionRichTextEditor";
 import { MarkdownRenderer } from "../common/MarkdownRenderer";
-import { CodeSyntaxHighlighter } from "../common/CodeSyntaxHighlighter"; // NEW IMPORT
+import { CodeSyntaxHighlighter } from "../common/CodeSyntaxHighlighter";
 import {
   useCreateSolution,
   useUpdateSolution,
@@ -28,7 +31,251 @@ import type {
   Solution,
   CreateSolutionRequest,
   UpdateSolutionRequest,
+  Question,
 } from "@/types";
+
+// Searchable Question Selector Component
+interface QuestionSelectorProps {
+  selectedQuestionId: string;
+  onQuestionSelect: (questionId: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}
+
+function QuestionSelector({
+  selectedQuestionId,
+  onQuestionSelect,
+  disabled = false,
+  placeholder = "Search and select a question...",
+}: QuestionSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const pageSize = 50;
+
+  // Fetch questions with search
+  const { data: questionsData, isLoading } = useQuestions({
+    page,
+    size: pageSize,
+    search: searchQuery.trim() || undefined,
+  });
+
+  // Fix: Wrap questions in useMemo to prevent unnecessary re-renders
+  const questions = useMemo(() => questionsData?.content || [], [questionsData?.content]);
+  
+  const hasMore = questionsData ? page < questionsData.totalPages - 1 : false;
+
+  // Find selected question
+  const selectedQuestion = questions.find(q => q.id === selectedQuestionId);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPage(0);
+  }, [searchQuery]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleQuestionSelect = (question: Question) => {
+    onQuestionSelect(question.id);
+    setIsOpen(false);
+    setSearchQuery("");
+  };
+
+  const loadMore = () => {
+    if (hasMore && !isLoading) {
+      setPage(prev => prev + 1);
+    }
+  };
+
+  // Group questions by category for better organization
+  const groupedQuestions = useMemo(() => {
+    const groups: Record<string, Question[]> = {};
+    questions.forEach(question => {
+      const category = question.categoryName || "Uncategorized";
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(question);
+    });
+    return groups;
+  }, [questions]);
+
+  return (
+    <div className="relative">
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Select Question *
+      </label>
+      
+      {/* Selected Question Display / Trigger */}
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        className={`relative w-full cursor-pointer rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm ${
+          disabled ? "opacity-50 cursor-not-allowed" : "hover:border-gray-400"
+        }`}
+      >
+        <span className="flex items-center">
+          {selectedQuestion ? (
+            <>
+              <span className="ml-3 block truncate font-medium">
+                {selectedQuestion.title}
+              </span>
+              <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                {selectedQuestion.categoryName} • {selectedQuestion.level}
+              </span>
+            </>
+          ) : (
+            <span className="ml-3 block truncate text-gray-400">
+              {placeholder}
+            </span>
+          )}
+        </span>
+        <span className="pointer-events-none absolute inset-y-0 right-0 ml-3 flex items-center pr-2">
+          <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+        </span>
+      </button>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <Transition
+          as={Fragment}
+          leave="transition ease-in duration-100"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="absolute z-10 mt-1 max-h-80 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+            {/* Search Input */}
+            <div className="sticky top-0 z-10 bg-white px-3 py-2 border-b border-gray-200">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search questions..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="block w-full rounded-md border-gray-300 pl-10 pr-3 py-2 text-sm placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Questions List */}
+            <div className="max-h-60 overflow-y-auto">
+              {isLoading && page === 0 ? (
+                <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                  Searching questions...
+                </div>
+              ) : questions.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                  {searchQuery ? `No questions found for "${searchQuery}"` : "No questions available"}
+                </div>
+              ) : (
+                <>
+                  {/* Group by category */}
+                  {Object.entries(groupedQuestions).map(([categoryName, categoryQuestions]) => (
+                    <div key={categoryName}>
+                      {/* Category Header */}
+                      <div className="sticky top-0 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 uppercase tracking-wide border-b border-gray-200">
+                        {categoryName} ({categoryQuestions.length})
+                      </div>
+                      
+                      {/* Questions in this category */}
+                      {categoryQuestions.map((question) => (
+                        <button
+                          key={question.id}
+                          type="button"
+                          onClick={() => handleQuestionSelect(question)}
+                          className={`relative w-full cursor-pointer select-none py-2 pl-3 pr-9 text-left hover:bg-blue-50 ${
+                            question.id === selectedQuestionId ? "bg-blue-100 text-blue-900" : "text-gray-900"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <span className={`block truncate font-medium ${
+                                question.id === selectedQuestionId ? "font-semibold" : ""
+                              }`}>
+                                {question.title}
+                              </span>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                  question.level === "EASY" ? "bg-green-100 text-green-800" :
+                                  question.level === "MEDIUM" ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-red-100 text-red-800"
+                                }`}>
+                                  {question.level}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {question.categoryName}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {question.id === selectedQuestionId && (
+                              <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-blue-600">
+                                <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                  
+                  {/* Load More Button */}
+                  {hasMore && (
+                    <button
+                      type="button"
+                      onClick={loadMore}
+                      disabled={isLoading}
+                      className="w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed border-t border-gray-200"
+                    >
+                      {isLoading ? "Loading more..." : `Load more questions...`}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </Transition>
+      )}
+
+      {/* Selected Question Info */}
+      {selectedQuestion && (
+        <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="flex items-start justify-between">
+            <div>
+              <h4 className="font-medium text-blue-900">
+                {selectedQuestion.title}
+              </h4>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  selectedQuestion.level === "EASY" ? "bg-green-100 text-green-800" :
+                  selectedQuestion.level === "MEDIUM" ? "bg-yellow-100 text-yellow-800" :
+                  "bg-red-100 text-red-800"
+                }`}>
+                  {selectedQuestion.level}
+                </span>
+                <span className="text-sm text-blue-700">
+                  {selectedQuestion.categoryName}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onQuestionSelect("")}
+              className="text-blue-400 hover:text-blue-600"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface CreateSolutionModalProps {
   isOpen: boolean;
@@ -53,10 +300,18 @@ export function CreateSolutionModal({
   const [showPreview, setShowPreview] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState(questionId || "");
 
-  const { data: questionsData } = useQuestions({ size: 100 }); // Get all questions for dropdown
   const createSolutionMutation = useCreateSolution();
 
-  const questions = questionsData?.content || [];
+  // Find selected question for preview
+  const { data: questionsData } = useQuestions({ 
+    size: 1,
+    search: selectedQuestionId ? undefined : "",
+  });
+  
+  // If we have a specific questionId, fetch that question
+  const selectedQuestion = selectedQuestionId 
+    ? questionsData?.content?.find(q => q.id === selectedQuestionId)
+    : null;
 
   const handleContentChange = useCallback((value: string) => {
     setFormData((prev) => ({
@@ -68,7 +323,7 @@ export function CreateSolutionModal({
   const validateForm = (): string[] => {
     const errors: string[] = [];
 
-    if (!selectedQuestionId) {
+    if (!selectedQuestionId.trim()) {
       errors.push("Please select a question");
     }
 
@@ -136,8 +391,6 @@ export function CreateSolutionModal({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const selectedQuestion = questions.find(q => q.id === selectedQuestionId);
-
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={handleClose}>
@@ -150,7 +403,7 @@ export function CreateSolutionModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/25" />
+          <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -177,7 +430,7 @@ export function CreateSolutionModal({
                     <button
                       type="button"
                       onClick={() => setShowPreview(!showPreview)}
-                      className={`inline-flex items-center px-3 py-1 border rounded-md text-sm font-medium ${
+                      className={`inline-flex items-center px-3 py-1 border rounded-md text-sm font-medium transition-colors ${
                         showPreview
                           ? "border-blue-500 bg-blue-50 text-blue-700"
                           : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
@@ -188,7 +441,7 @@ export function CreateSolutionModal({
                     </button>
                     <button
                       type="button"
-                      className="rounded-md text-gray-400 hover:text-gray-600"
+                      className="rounded-md text-gray-400 hover:text-gray-600 transition-colors"
                       onClick={handleClose}
                     >
                       <XMarkIcon className="h-6 w-6" />
@@ -199,39 +452,17 @@ export function CreateSolutionModal({
                 <div className={`grid ${showPreview ? "grid-cols-2 gap-6" : "grid-cols-1"}`}>
                   <div className="space-y-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
-                      {/* Question Selection */}
-                      <div>
-                        <label
-                          htmlFor="question"
-                          className="block text-sm font-medium text-gray-700 mb-1"
-                        >
-                          Select Question
-                        </label>
-                        <select
-                          id="question"
-                          value={selectedQuestionId}
-                          onChange={(e) => setSelectedQuestionId(e.target.value)}
-                          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                          disabled={!!questionId} // Disable if questionId was provided
-                        >
-                          <option value="">Select a question</option>
-                          {questions.map((question) => (
-                            <option key={question.id} value={question.id}>
-                              {question.title} ({question.categoryName})
-                            </option>
-                          ))}
-                        </select>
-                        {selectedQuestion && (
-                          <div className="mt-2 p-2 bg-blue-50 rounded text-sm text-blue-800">
-                            <strong>Selected:</strong> {selectedQuestion.title} • {selectedQuestion.categoryName} • {selectedQuestion.level}
-                          </div>
-                        )}
-                      </div>
+                      {/* Enhanced Question Selection */}
+                      <QuestionSelector
+                        selectedQuestionId={selectedQuestionId}
+                        onQuestionSelect={setSelectedQuestionId}
+                        disabled={!!questionId} // Disable if questionId was provided
+                      />
 
                       {/* Solution Rich Text Editor */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Solution Content
+                          Solution Content *
                         </label>
                         <SolutionRichTextEditor
                           textContent={formData.content}
@@ -261,10 +492,10 @@ export function CreateSolutionModal({
                         </div>
                       )}
 
-                      <div className="flex gap-3 justify-end">
+                      <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
                         <button
                           type="button"
-                          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                           onClick={handleClose}
                           disabled={createSolutionMutation.isPending}
                         >
@@ -272,7 +503,7 @@ export function CreateSolutionModal({
                         </button>
                         <button
                           type="submit"
-                          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           disabled={createSolutionMutation.isPending}
                         >
                           {createSolutionMutation.isPending
@@ -285,8 +516,9 @@ export function CreateSolutionModal({
 
                   {showPreview && (
                     <div className="border-l border-gray-200 pl-6">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">
-                        Preview
+                      <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                        <EyeIcon className="h-4 w-4 mr-1" />
+                        Live Preview
                       </h4>
                       <div className="bg-gray-50 rounded-lg p-4 max-h-[600px] overflow-y-auto">
                         {selectedQuestion && (
@@ -307,7 +539,6 @@ export function CreateSolutionModal({
                               <MarkdownRenderer content={formData.content} />
                             </div>
 
-                            {/* UPDATED: Use CodeSyntaxHighlighter */}
                             {formData.codeSnippet && (
                               <div>
                                 <h3 className="text-sm font-medium text-gray-700 mb-2">Code Solution</h3>
@@ -339,9 +570,12 @@ export function CreateSolutionModal({
                             )}
                           </div>
                         ) : (
-                          <p className="text-gray-500 text-sm italic">
-                            Preview will appear here as you add content...
-                          </p>
+                          <div className="text-center py-8">
+                            <LightBulbIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                            <p className="text-gray-500 text-sm italic">
+                              Preview will appear here as you add content...
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -488,7 +722,7 @@ export function EditSolutionModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/25" />
+          <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -515,7 +749,7 @@ export function EditSolutionModal({
                     <button
                       type="button"
                       onClick={() => setShowPreview(!showPreview)}
-                      className={`inline-flex items-center px-3 py-1 border rounded-md text-sm font-medium ${
+                      className={`inline-flex items-center px-3 py-1 border rounded-md text-sm font-medium transition-colors ${
                         showPreview
                           ? "border-blue-500 bg-blue-50 text-blue-700"
                           : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
@@ -526,7 +760,7 @@ export function EditSolutionModal({
                     </button>
                     <button
                       type="button"
-                      className="rounded-md text-gray-400 hover:text-gray-600"
+                      className="rounded-md text-gray-400 hover:text-gray-600 transition-colors"
                       onClick={handleClose}
                     >
                       <XMarkIcon className="h-6 w-6" />
@@ -550,7 +784,7 @@ export function EditSolutionModal({
                       {/* Solution Rich Text Editor */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Solution Content
+                          Solution Content *
                         </label>
                         <SolutionRichTextEditor
                           textContent={formData.content}
@@ -581,10 +815,10 @@ export function EditSolutionModal({
                         </div>
                       )}
 
-                      <div className="flex gap-3 justify-end">
+                      <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
                         <button
                           type="button"
-                          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                           onClick={handleClose}
                           disabled={updateSolutionMutation.isPending}
                         >
@@ -592,7 +826,7 @@ export function EditSolutionModal({
                         </button>
                         <button
                           type="submit"
-                          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           disabled={updateSolutionMutation.isPending}
                         >
                           {updateSolutionMutation.isPending
@@ -605,8 +839,9 @@ export function EditSolutionModal({
 
                   {showPreview && (
                     <div className="border-l border-gray-200 pl-6">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">
-                        Preview
+                      <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                        <EyeIcon className="h-4 w-4 mr-1" />
+                        Live Preview
                       </h4>
                       <div className="bg-gray-50 rounded-lg p-4 max-h-[600px] overflow-y-auto">
                         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
@@ -622,7 +857,6 @@ export function EditSolutionModal({
                               <MarkdownRenderer content={formData.content} />
                             </div>
 
-                            {/* UPDATED: Use CodeSyntaxHighlighter */}
                             {formData.codeSnippet && (
                               <div>
                                 <h3 className="text-sm font-medium text-gray-700 mb-2">Code Solution</h3>
@@ -654,9 +888,12 @@ export function EditSolutionModal({
                             )}
                           </div>
                         ) : (
-                          <p className="text-gray-500 text-sm italic">
-                            Preview will appear here as you add content...
-                          </p>
+                          <div className="text-center py-8">
+                            <LightBulbIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                            <p className="text-gray-500 text-sm italic">
+                              Preview will appear here as you add content...
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -704,7 +941,7 @@ export function DeleteSolutionModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/25" />
+          <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -781,7 +1018,7 @@ export function DeleteSolutionModal({
                 <div className="mt-6 flex gap-3 justify-end">
                   <button
                     type="button"
-                    className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                     onClick={onClose}
                     disabled={deleteSolutionMutation.isPending}
                   >
@@ -789,7 +1026,7 @@ export function DeleteSolutionModal({
                   </button>
                   <button
                     type="button"
-                    className="inline-flex justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     onClick={handleDelete}
                     disabled={deleteSolutionMutation.isPending}
                   >
