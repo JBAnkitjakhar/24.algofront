@@ -57,7 +57,7 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
         const afterImage = line.substring(imageMatch.index! + imageMatch[0].length);
 
         // Add text before image if any
-        if (beforeImage.trim()) {
+        if (beforeImage) {
           elements.push({
             type: 'text',
             content: beforeImage
@@ -73,7 +73,7 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
         });
 
         // Add text after image if any
-        if (afterImage.trim()) {
+        if (afterImage) {
           elements.push({
             type: 'text',
             content: afterImage
@@ -92,7 +92,7 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
       i++;
     }
 
-    // Merge consecutive text elements
+    // Merge consecutive text elements but preserve exact newlines
     const mergedElements: MarkdownElement[] = [];
     for (const element of elements) {
       const lastElement = mergedElements[mergedElements.length - 1];
@@ -107,73 +107,13 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
     return mergedElements;
   }, [content]);
 
-  const renderTextContent = (text: string) => {
-    // Split text into paragraphs
-    const paragraphs = text.split('\n\n').filter(p => p.trim());
-    
-    return paragraphs.map((paragraph, index) => {
-      const lines = paragraph.split('\n');
-      
-      return (
-        <div key={index} className="mb-4 last:mb-0">
-          {lines.map((line, lineIndex) => {
-            // Handle headers
-            if (line.startsWith('### ')) {
-              return (
-                <h3 key={lineIndex} className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  {line.slice(4)}
-                </h3>
-              );
-            }
-            if (line.startsWith('## ')) {
-              return (
-                <h2 key={lineIndex} className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                  {line.slice(3)}
-                </h2>
-              );
-            }
-            if (line.startsWith('# ')) {
-              return (
-                <h1 key={lineIndex} className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  {line.slice(2)}
-                </h1>
-              );
-            }
-
-            // Handle bold text
-            let processedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            
-            // Handle italic text
-            processedLine = processedLine.replace(/\*(.*?)\*/g, '<em>$1</em>');
-            
-            // Handle inline code
-            processedLine = processedLine.replace(/`(.*?)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>');
-
-            // Handle lists
-            if (line.startsWith('- ') || line.startsWith('* ')) {
-              return (
-                <li key={lineIndex} className="ml-4 mb-1" dangerouslySetInnerHTML={{ __html: processedLine.slice(2) }} />
-              );
-            }
-
-            if (line.startsWith('1. ') || /^\d+\. /.test(line)) {
-              return (
-                <li key={lineIndex} className="ml-4 mb-1 list-decimal" dangerouslySetInnerHTML={{ __html: processedLine.replace(/^\d+\. /, '') }} />
-              );
-            }
-
-            // Regular paragraph line
-            if (line.trim()) {
-              return (
-                <p key={lineIndex} className="text-gray-800 dark:text-gray-200 leading-relaxed mb-2 last:mb-0" dangerouslySetInnerHTML={{ __html: processedLine }} />
-              );
-            }
-
-            return null;
-          })}
-        </div>
-      );
-    });
+  // FIXED: New function to preserve exact spacing and formatting
+  const renderPreformattedText = (text: string) => {
+    return (
+      <pre className="whitespace-pre-wrap font-sans text-gray-800 dark:text-gray-200 leading-relaxed break-words">
+        {text}
+      </pre>
+    );
   };
 
   const renderCodeBlock = (code: string, language: string) => {
@@ -223,13 +163,13 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
   };
 
   return (
-    <div className={`prose prose-gray dark:prose-invert max-w-none ${className}`}>
+    <div className={`max-w-none ${className}`}>
       {parsedContent.map((element, index) => {
         switch (element.type) {
           case 'text':
             return (
               <div key={index}>
-                {renderTextContent(element.content)}
+                {renderPreformattedText(element.content)}
               </div>
             );
           
