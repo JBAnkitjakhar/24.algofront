@@ -1,4 +1,4 @@
-// src/components/common/MarkdownRenderer.tsx - Render markdown with embedded images
+// src/components/common/MarkdownRenderer.tsx  
 
 'use client';
 

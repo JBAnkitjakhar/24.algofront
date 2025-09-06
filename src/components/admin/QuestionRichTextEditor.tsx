@@ -1,4 +1,4 @@
-// src/components/admin/RichTextEditor.tsx - Fixed with debugging and proper image display
+// src/components/admin/QuestionRichTextEditor.tsx  
 
 "use client";
 

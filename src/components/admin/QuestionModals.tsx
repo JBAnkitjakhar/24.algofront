@@ -14,7 +14,7 @@ import {
   CodeBracketIcon,
   EyeIcon,
 } from "@heroicons/react/24/outline";
-import { RichTextEditor } from "./RichTextEditor";
+import { RichTextEditor } from "./QuestionRichTextEditor";
 import { MarkdownRenderer } from "../common/MarkdownRenderer";
 import {
   useCreateQuestion,
