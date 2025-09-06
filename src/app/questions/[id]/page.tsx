@@ -1,4 +1,4 @@
-// src/app/questions/[id]/page.tsx - FIXED: Complete code with proper solution viewer isolation
+// src/app/questions/[id]/page.tsx - OPTIMIZED: Compact header with reduced spacing
 
 'use client';
 
@@ -188,109 +188,106 @@ function QuestionDetailContent() {
                 className="flex flex-col bg-white dark:bg-gray-800"
                 style={{ width: `${100 - leftPanelWidth}%` }}
               >
-                {/* Question Header */}
-                <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 p-4">
-                  {/* Breadcrumb */}
-                  <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-3">
+                {/* OPTIMIZED: Compact Question Header */}
+                <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-1">
+                  {/* Breadcrumb - Compact */}
+                  <div className="flex items-center space-x-1.5 text-xs text-gray-500 dark:text-gray-400 mb-2">
                     <button
                       onClick={() => router.push('/questions')}
                       className="flex items-center hover:text-gray-700 dark:hover:text-gray-300"
                     >
-                      <ArrowLeft className="w-4 h-4 mr-1" />
+                      <ArrowLeft className="w-3 h-3 mr-1" />
                       Questions
                     </button>
                     {category && (
                       <>
-                        <ChevronRight className="w-4 h-4" />
+                        <ChevronRight className="w-3 h-3" />
                         <button
                           onClick={() => router.push(`/categories/${category.id}`)}
-                          className="hover:text-gray-700 dark:hover:text-gray-300"
+                          className="hover:text-gray-700 dark:hover:text-gray-300 truncate"
                         >
                           {category.name}
                         </button>
                       </>
                     )}
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-3 h-3" />
                     <span className="text-gray-900 dark:text-white font-medium truncate">
                       {question.title}
                     </span>
                   </div>
 
-                  {/* Question Header */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-3">
-                        {solved ? (
-                          <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                        ) : (
-                          <Circle className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                        )}
-                        <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-                          {question.title}
-                        </h1>
-                      </div>
+                  {/* OPTIMIZED: Question Title Only */}
+                  <div className="flex items-center space-x-2 min-w-0">
+                    {solved ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                    )}
+                    <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">
+                      {question.title}
+                    </h1>
+                  </div>
 
-                      <div className="flex flex-wrap items-center gap-3">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium border ${levelColors.bg} ${levelColors.text} ${levelColors.border}`}>
-                          {QUESTION_LEVEL_LABELS[question.level]}
-                        </span>
-                        
-                        {category && (
-                          <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
-                            <FolderOpen className="w-4 h-4" />
-                            <span>{category.name}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center space-x-3 ml-4">
-                      {/* Solved Date Info */}
-                      {solved && solvedAt && (
-                        <div className="flex items-center space-x-2 text-sm text-green-600 dark:text-green-400">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>Solved on {dateUtils.formatDate(solvedAt)}</span>
+                  {/* OPTIMIZED: Compact Meta Information with Mark Solved Button */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${levelColors.bg} ${levelColors.text} ${levelColors.border}`}>
+                        {QUESTION_LEVEL_LABELS[question.level]}
+                      </span>
+                      
+                      {category && (
+                        <div className="flex items-center space-x-1 text-xs text-gray-600 dark:text-gray-400">
+                          <FolderOpen className="w-3 h-3" />
+                          <span>{category.name}</span>
                         </div>
                       )}
-                      
-                      {/* Mark Solved/Unsolved Button */}
-                      <button
-                        onClick={handleToggleSolved}
-                        disabled={updateProgressMutation.isPending}
-                        className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                          solved
-                            ? 'bg-red-600 hover:bg-red-700 text-white'
-                            : 'bg-green-600 hover:bg-green-700 text-white'
-                        } ${
-                          updateProgressMutation.isPending 
-                            ? 'opacity-50 cursor-not-allowed' 
-                            : ''
-                        }`}
-                      >
-                        {updateProgressMutation.isPending ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        ) : solved ? (
-                          <X className="w-4 h-4" />
-                        ) : (
-                          <Check className="w-4 h-4" />
-                        )}
-                        <span>
-                          {updateProgressMutation.isPending 
-                            ? 'Updating...' 
-                            : solved 
-                              ? 'Mark Unsolved' 
-                              : 'Mark Solved'
-                          }
-                        </span>
-                      </button>
+
+                      {/* Solved Date Info - Compact */}
+                      {solved && solvedAt && (
+                        <div className="flex items-center space-x-1 text-xs text-green-600 dark:text-green-400">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span className="hidden sm:inline">Solved on {dateUtils.formatDate(solvedAt)}</span>
+                          <span className="sm:hidden">Solved</span>
+                        </div>
+                      )}
                     </div>
+
+                    {/* OPTIMIZED: Mark Solved Button */}
+                    <button
+                      onClick={handleToggleSolved}
+                      disabled={updateProgressMutation.isPending}
+                      className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex-shrink-0 ${
+                        solved
+                          ? 'bg-red-600 hover:bg-red-700 text-white'
+                          : 'bg-green-600 hover:bg-green-700 text-white'
+                      } ${
+                        updateProgressMutation.isPending 
+                          ? 'opacity-50 cursor-not-allowed' 
+                          : ''
+                      }`}
+                    >
+                      {updateProgressMutation.isPending ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                      ) : solved ? (
+                        <X className="w-3 h-3" />
+                      ) : (
+                        <Check className="w-3 h-3" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {updateProgressMutation.isPending 
+                          ? 'Updating...' 
+                          : solved 
+                            ? 'Mark Unsolved' 
+                            : 'Mark Solved'
+                        }
+                      </span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Tabs */}
+                {/* OPTIMIZED: Compact Tabs with Zero Vertical Padding */}
                 <div className="border-b border-gray-200 dark:border-gray-700">
-                  <nav className="flex space-x-8 px-6 pt-4">
+                  <nav className="flex px-4">
                     {[
                       { id: 'description', label: 'Description', icon: FileText },
                       { id: 'solutions', label: `Solutions (${solutions.length})`, icon: Lightbulb },
@@ -301,27 +298,29 @@ function QuestionDetailContent() {
                         <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id as 'description' | 'solutions' | 'submissions')}
-                          className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                          className={`flex items-center space-x-1.5 py-1 px-1 border-b-2 font-medium text-sm ${
                             activeTab === tab.id
                               ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                           }`}
                         >
                           <Icon className="w-4 h-4" />
-                          <span>{tab.label}</span>
+                          <span className="hidden sm:inline">{tab.label}</span>
+                          <span className="sm:hidden">
+                            {tab.id === 'description' ? 'Desc' : 
+                             tab.id === 'solutions' ? `Sol (${solutions.length})` : 
+                             'Sub'}
+                          </span>
                         </button>
                       );
                     })}
                   </nav>
                 </div>
 
-                {/* FIXED: Tab Content - Only show when NOT viewing a solution */}
+                {/* Tab Content - Only show when NOT viewing a solution */}
                 <div className="flex-1 overflow-auto">
                   {activeTab === 'description' && (
-                    <div className="p-6">
-                      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                        Problem Description
-                      </h2>
+                    <div className="p-4">
                       
                       {/* Use MarkdownRenderer to properly render statement with images in correct positions */}
                       <div className="mb-6">
@@ -334,12 +333,12 @@ function QuestionDetailContent() {
                       {/* Code Snippets */}
                       {question.codeSnippets && question.codeSnippets.length > 0 && (
                         <div className="mb-6">
-                          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                          <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">
                             Code Templates
                           </h3>
-                          <div className="space-y-4">
+                          <div className="space-y-3">
                             {question.codeSnippets.map((snippet, index) => (
-                              <div key={index} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                              <div key={index} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
                                 <div className="flex items-center justify-between mb-2">
                                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     {snippet.language}
@@ -362,7 +361,7 @@ function QuestionDetailContent() {
                   )}
 
                   {activeTab === 'solutions' && (
-                    <div className="p-6 space-y-6">
+                    <div className="p-4 space-y-4">
                       {solutions.length === 0 ? (
                         <div className="text-center py-12">
                           <Lightbulb className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -377,12 +376,12 @@ function QuestionDetailContent() {
                         solutions.map((solution) => (
                           <div
                             key={solution.id}
-                            className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
+                            className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
                             onClick={() => setSelectedSolution(solution)}
                           >
-                            <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-start justify-between mb-3">
                               <div>
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                                <h3 className="text-base font-medium text-gray-900 dark:text-white">
                                   Official Solution
                                 </h3>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -394,16 +393,16 @@ function QuestionDetailContent() {
                                   e.stopPropagation();
                                   setSelectedSolution(solution);
                                 }}
-                                className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
                               >
-                                <span>View Solution</span>
-                                <ChevronRight className="w-4 h-4" />
+                                <span>View</span>
+                                <ChevronRight className="w-3 h-3" />
                               </button>
                             </div>
                             
                             {/* Solution Preview */}
-                            <div className="mb-4">
-                              <div className="text-gray-700 dark:text-gray-300 line-clamp-3">
+                            <div className="mb-3">
+                              <div className="text-gray-700 dark:text-gray-300 line-clamp-3 text-sm">
                                 {solution.content
                                   .replace(/!\[.*?\]\(.*?\)/g, "[Image]")
                                   .replace(/```[\s\S]*?```/g, "[Code Block]")
@@ -413,33 +412,33 @@ function QuestionDetailContent() {
                             </div>
 
                             {/* Solution Features */}
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1.5">
                               {solution.codeSnippet && (
-                                <span className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-full text-xs">
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded text-xs">
                                   <Code className="w-3 h-3 mr-1" />
                                   {solution.codeSnippet.language}
                                 </span>
                               )}
                               {solution.youtubeLink && (
-                                <span className="inline-flex items-center px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-full text-xs">
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded text-xs">
                                   <Play className="w-3 h-3 mr-1" />
                                   Video
                                 </span>
                               )}
                               {solution.driveLink && (
-                                <span className="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full text-xs">
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded text-xs">
                                   <FolderOpen className="w-3 h-3 mr-1" />
                                   Resources
                                 </span>
                               )}
                               {solution.visualizerFileIds && solution.visualizerFileIds.length > 0 && (
-                                <span className="inline-flex items-center px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 rounded-full text-xs">
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 rounded text-xs">
                                   <CubeIcon className="w-3 h-3 mr-1" />
                                   {solution.visualizerFileIds.length} Visualizer{solution.visualizerFileIds.length !== 1 ? 's' : ''}
                                 </span>
                               )}
                               {solution.imageUrls && solution.imageUrls.length > 0 && (
-                                <span className="inline-flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full text-xs">
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs">
                                   {solution.imageUrls.length} Image{solution.imageUrls.length !== 1 ? 's' : ''}
                                 </span>
                               )}
@@ -450,9 +449,9 @@ function QuestionDetailContent() {
                     </div>
                   )}
 
-                  {/* FIXED: This is the submissions tab content that was showing up in solution viewer */}
+                  {/* Submissions tab content */}
                   {activeTab === 'submissions' && (
-                    <div className="p-6 text-center py-12">
+                    <div className="p-4 text-center py-12">
                       <Play className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                         No Submissions Yet

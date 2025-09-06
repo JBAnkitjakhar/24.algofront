@@ -1,4 +1,4 @@
-// src/components/compiler/QuestionCompilerLayout.tsx
+// src/components/compiler/QuestionCompilerLayout.tsx - FIXED: Compact header and working themes
 
 "use client";
 
@@ -29,26 +29,18 @@ import { useCodeExecution } from "@/hooks/useCodeExecution";
 import type { editor } from "monaco-editor";
 import { Question } from "@/types/admin";
 
-// Monaco Editor Themes (same as main compiler)
+// Monaco Editor Themes - FIXED: Complete theme definitions
 const MONACO_THEMES = [
   { name: "VS Code Light", value: "light", preview: "bg-white text-gray-900" },
   { name: "VS Code Dark", value: "vs-dark", preview: "bg-gray-800 text-white" },
   { name: "Monokai", value: "monokai", preview: "bg-gray-900 text-green-400" },
-  {
-    name: "Dracula",
-    value: "dracula",
-    preview: "bg-purple-900 text-purple-200",
-  },
+  { name: "Dracula", value: "dracula", preview: "bg-purple-900 text-purple-200" },
   { name: "Cobalt", value: "cobalt", preview: "bg-blue-900 text-blue-200" },
-  {
-    name: "One Dark",
-    value: "one-dark",
-    preview: "bg-gray-900 text-orange-400",
-  },
+  { name: "One Dark", value: "one-dark", preview: "bg-gray-900 text-orange-400" },
   { name: "Eclipse", value: "eclipse", preview: "bg-gray-100 text-gray-800" },
 ];
 
-// Custom Monaco Themes (same as main compiler)
+// FIXED: Complete custom themes with all missing themes
 const customThemes = {
   monokai: {
     base: "vs-dark" as const,
@@ -80,7 +72,126 @@ const customThemes = {
       "editor.inactiveSelectionBackground": "#49483E",
     },
   },
-  // Add other themes as needed...
+  dracula: {
+    base: "vs-dark" as const,
+    inherit: true,
+    rules: [
+      { token: "", foreground: "F8F8F2", background: "282A36" },
+      { token: "comment", foreground: "6272A4" },
+      { token: "keyword", foreground: "FF79C6" },
+      { token: "string", foreground: "F1FA8C" },
+      { token: "number", foreground: "BD93F9" },
+      { token: "regexp", foreground: "F1FA8C" },
+      { token: "operator", foreground: "FF79C6" },
+      { token: "namespace", foreground: "FF79C6" },
+      { token: "type", foreground: "8BE9FD" },
+      { token: "struct", foreground: "50FA7B" },
+      { token: "class", foreground: "50FA7B" },
+      { token: "interface", foreground: "50FA7B" },
+      { token: "parameter", foreground: "FFB86C" },
+      { token: "variable", foreground: "F8F8F2" },
+      { token: "function", foreground: "50FA7B" },
+    ],
+    colors: {
+      "editor.background": "#282A36",
+      "editor.foreground": "#F8F8F2",
+      "editorCursor.foreground": "#F8F8F0",
+      "editor.lineHighlightBackground": "#44475A",
+      "editorLineNumber.foreground": "#6272A4",
+      "editor.selectionBackground": "#44475A",
+      "editor.inactiveSelectionBackground": "#44475A",
+    },
+  },
+  cobalt: {
+    base: "vs-dark" as const,
+    inherit: true,
+    rules: [
+      { token: "", foreground: "FFFFFF", background: "002240" },
+      { token: "comment", foreground: "0088FF" },
+      { token: "keyword", foreground: "FF9D00" },
+      { token: "string", foreground: "3AD900" },
+      { token: "number", foreground: "FF628C" },
+      { token: "regexp", foreground: "80FFBB" },
+      { token: "operator", foreground: "FF9D00" },
+      { token: "namespace", foreground: "FF9D00" },
+      { token: "type", foreground: "80FFBB" },
+      { token: "struct", foreground: "FFEE80" },
+      { token: "class", foreground: "FFEE80" },
+      { token: "interface", foreground: "FFEE80" },
+      { token: "parameter", foreground: "FFEE80" },
+      { token: "variable", foreground: "FFFFFF" },
+      { token: "function", foreground: "FFEE80" },
+    ],
+    colors: {
+      "editor.background": "#002240",
+      "editor.foreground": "#FFFFFF",
+      "editorCursor.foreground": "#FFFFFF",
+      "editor.lineHighlightBackground": "#001B33",
+      "editorLineNumber.foreground": "#0088FF",
+      "editor.selectionBackground": "#004080",
+      "editor.inactiveSelectionBackground": "#003366",
+    },
+  },
+  "one-dark": {
+    base: "vs-dark" as const,
+    inherit: true,
+    rules: [
+      { token: "", foreground: "ABB2BF", background: "282C34" },
+      { token: "comment", foreground: "5C6370" },
+      { token: "keyword", foreground: "C678DD" },
+      { token: "string", foreground: "98C379" },
+      { token: "number", foreground: "D19A66" },
+      { token: "regexp", foreground: "56B6C2" },
+      { token: "operator", foreground: "56B6C2" },
+      { token: "namespace", foreground: "C678DD" },
+      { token: "type", foreground: "E06C75" },
+      { token: "struct", foreground: "E5C07B" },
+      { token: "class", foreground: "E5C07B" },
+      { token: "interface", foreground: "E5C07B" },
+      { token: "parameter", foreground: "D19A66" },
+      { token: "variable", foreground: "ABB2BF" },
+      { token: "function", foreground: "61AFEF" },
+    ],
+    colors: {
+      "editor.background": "#282C34",
+      "editor.foreground": "#ABB2BF",
+      "editorCursor.foreground": "#528BFF",
+      "editor.lineHighlightBackground": "#2C313C",
+      "editorLineNumber.foreground": "#636D83",
+      "editor.selectionBackground": "#3E4451",
+      "editor.inactiveSelectionBackground": "#3E4451",
+    },
+  },
+  eclipse: {
+    base: "vs" as const,
+    inherit: true,
+    rules: [
+      { token: "", foreground: "000000", background: "FFFFFF" },
+      { token: "comment", foreground: "3F7F5F" },
+      { token: "keyword", foreground: "7F0055" },
+      { token: "string", foreground: "2A00FF" },
+      { token: "number", foreground: "000000" },
+      { token: "regexp", foreground: "000000" },
+      { token: "operator", foreground: "000000" },
+      { token: "namespace", foreground: "7F0055" },
+      { token: "type", foreground: "000000" },
+      { token: "struct", foreground: "000000" },
+      { token: "class", foreground: "000000" },
+      { token: "interface", foreground: "000000" },
+      { token: "parameter", foreground: "000000" },
+      { token: "variable", foreground: "000000" },
+      { token: "function", foreground: "000000" },
+    ],
+    colors: {
+      "editor.background": "#FFFFFF",
+      "editor.foreground": "#000000",
+      "editorCursor.foreground": "#000000",
+      "editor.lineHighlightBackground": "#F0F0F0",
+      "editorLineNumber.foreground": "#999999",
+      "editor.selectionBackground": "#C0C0C0",
+      "editor.inactiveSelectionBackground": "#E0E0E0",
+    },
+  },
 };
 
 interface QuestionCompilerLayoutProps {
@@ -415,7 +526,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     }
   };
 
-  // Monaco Editor beforeMount
+  // FIXED: Monaco Editor beforeMount with all custom themes
   const handleEditorWillMount = (monaco: typeof import("monaco-editor")) => {
     try {
       Object.entries(customThemes).forEach(([name, theme]) => {
@@ -449,10 +560,10 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center space-x-3">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+      {/* ULTRA-COMPACT: Minimal Header */}
+      <div className="flex items-center justify-between px-2 py-0.5 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center space-x-1.5">
+          <h2 className="text-xs font-medium text-gray-900 dark:text-white">
             Code Editor
           </h2>
           <LanguageSelector
@@ -462,36 +573,36 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
           />
         </div>
 
-        <div className="flex items-center space-x-2">
-          {/* Font Size Controls */}
-          <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1">
+          {/* Font Size Controls - Wider but same height */}
+          <div className="flex items-center">
             <button
               onClick={decreaseFontSize}
-              className="p-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+              className="px-1 py-0.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
               title="Decrease font size"
             >
-              <ZoomOut size={14} />
+              <ZoomOut size={10} />
             </button>
-            <span className="text-xs text-gray-500 min-w-[2rem] text-center">
+            <span className="text-xs text-gray-500 min-w-[2.5rem] text-center">
               {fontSize}px
             </span>
             <button
               onClick={increaseFontSize}
-              className="p-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+              className="px-1 py-0.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
               title="Increase font size"
             >
-              <ZoomIn size={14} />
+              <ZoomIn size={10} />
             </button>
           </div>
 
-          {/* Theme Selector */}
+          {/* Theme Selector - Wider but same height */}
           <div className="relative">
             <button
               onClick={() => setShowThemeSelector(!showThemeSelector)}
-              className="p-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+              className="px-1 py-0.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
               title="Change editor theme"
             >
-              <Palette size={14} />
+              <Palette size={10} />
             </button>
 
             {showThemeSelector && (
@@ -521,21 +632,22 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
             )}
           </div>
 
+          {/* Action Buttons - Ultra Compact */}
           <button
             onClick={handleRunCode}
             disabled={isPending || !code.trim()}
-            className="flex items-center space-x-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center space-x-0.5 px-1.5 py-0.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Play size={14} />
+            <Play size={10} />
             <span>{isPending ? "Running..." : "Run"}</span>
           </button>
 
           <button
             onClick={handleReset}
             disabled={isPending}
-            className="flex items-center space-x-1.5 px-3 py-1.5 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center space-x-0.5 px-1.5 py-0.5 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <RotateCcw size={14} />
+            <RotateCcw size={10} />
             <span>Reset</span>
           </button>
         </div>
@@ -664,19 +776,19 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
         )}
       </div>
 
-      {/* Bottom Action Bar */}
-      <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+      {/* Bottom Action Bar - Compact */}
+      <div className="px-3 py-1 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5">
             {!showInputPanel && (
               <button
                 onClick={() => {
                   setShowInputPanel(true);
                   setShowOutputPanel(false);
                 }}
-                className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
               >
-                <ChevronUp size={14} />
+                <ChevronUp size={12} />
                 <span>Input</span>
               </button>
             )}
@@ -687,16 +799,16 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
                   setShowOutputPanel(true);
                   setShowInputPanel(false);
                 }}
-                className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                className="flex items-center space-x-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
               >
-                <ChevronUp size={14} />
+                <ChevronUp size={12} />
                 <span>Output</span>
               </button>
             )}
           </div>
 
           {error && (
-            <div className="text-sm text-red-600 dark:text-red-400">
+            <div className="text-xs text-red-600 dark:text-red-400">
               Error: {error.message}
             </div>
           )}
