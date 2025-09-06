@@ -188,10 +188,10 @@ function QuestionDetailContent() {
                 className="flex flex-col bg-white dark:bg-gray-800"
                 style={{ width: `${100 - leftPanelWidth}%` }}
               >
-                {/* OPTIMIZED: Compact Question Header */}
-                <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-1">
+                {/* STICKY HEADER: Only Breadcrumb Navigation */}
+                <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-2">
                   {/* Breadcrumb - Compact */}
-                  <div className="flex items-center space-x-1.5 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  <div className="flex items-center space-x-1.5 text-xs text-gray-500 dark:text-gray-400">
                     <button
                       onClick={() => router.push('/questions')}
                       className="flex items-center hover:text-gray-700 dark:hover:text-gray-300"
@@ -215,79 +215,11 @@ function QuestionDetailContent() {
                       {question.title}
                     </span>
                   </div>
-
-                  {/* OPTIMIZED: Question Title Only */}
-                  <div className="flex items-center space-x-2 min-w-0">
-                    {solved ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                    ) : (
-                      <Circle className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                    )}
-                    <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">
-                      {question.title}
-                    </h1>
-                  </div>
-
-                  {/* OPTIMIZED: Compact Meta Information with Mark Solved Button */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${levelColors.bg} ${levelColors.text} ${levelColors.border}`}>
-                        {QUESTION_LEVEL_LABELS[question.level]}
-                      </span>
-                      
-                      {category && (
-                        <div className="flex items-center space-x-1 text-xs text-gray-600 dark:text-gray-400">
-                          <FolderOpen className="w-3 h-3" />
-                          <span>{category.name}</span>
-                        </div>
-                      )}
-
-                      {/* Solved Date Info - Compact */}
-                      {solved && solvedAt && (
-                        <div className="flex items-center space-x-1 text-xs text-green-600 dark:text-green-400">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span className="hidden sm:inline">Solved on {dateUtils.formatDate(solvedAt)}</span>
-                          <span className="sm:hidden">Solved</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* OPTIMIZED: Mark Solved Button */}
-                    <button
-                      onClick={handleToggleSolved}
-                      disabled={updateProgressMutation.isPending}
-                      className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex-shrink-0 ${
-                        solved
-                          ? 'bg-red-600 hover:bg-red-700 text-white'
-                          : 'bg-green-600 hover:bg-green-700 text-white'
-                      } ${
-                        updateProgressMutation.isPending 
-                          ? 'opacity-50 cursor-not-allowed' 
-                          : ''
-                      }`}
-                    >
-                      {updateProgressMutation.isPending ? (
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                      ) : solved ? (
-                        <X className="w-3 h-3" />
-                      ) : (
-                        <Check className="w-3 h-3" />
-                      )}
-                      <span className="hidden sm:inline">
-                        {updateProgressMutation.isPending 
-                          ? 'Updating...' 
-                          : solved 
-                            ? 'Mark Unsolved' 
-                            : 'Mark Solved'
-                        }
-                      </span>
-                    </button>
-                  </div>
                 </div>
 
-                {/* OPTIMIZED: Compact Tabs with Zero Vertical Padding */}
-                <div className="border-b border-gray-200 dark:border-gray-700">
-                  <nav className="flex px-4">
+                {/* STICKY TABS */}
+                <div className="sticky top-10 z-10 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                  <nav className="flex px-1">
                     {[
                       { id: 'description', label: 'Description', icon: FileText },
                       { id: 'solutions', label: `Solutions (${solutions.length})`, icon: Lightbulb },
@@ -298,7 +230,7 @@ function QuestionDetailContent() {
                         <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id as 'description' | 'solutions' | 'submissions')}
-                          className={`flex items-center space-x-1.5 py-1 px-1 border-b-2 font-medium text-sm ${
+                          className={`flex items-center space-x-1.5 px-3 border-b-2 font-medium text-sm ${
                             activeTab === tab.id
                               ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
@@ -317,10 +249,79 @@ function QuestionDetailContent() {
                   </nav>
                 </div>
 
-                {/* Tab Content - Only show when NOT viewing a solution */}
+                {/* SCROLLABLE CONTENT AREA */}
                 <div className="flex-1 overflow-auto">
                   {activeTab === 'description' && (
                     <div className="p-4">
+                      {/* SCROLLABLE: Question Title, Level, Category, and Mark Solved Button */}
+                      <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                        {/* Question Title */}
+                        <div className="flex items-center space-x-2 mb-3">
+                          {solved ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                          ) : (
+                            <Circle className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                          )}
+                          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                            {question.title}
+                          </h1>
+                        </div>
+
+                        {/* Meta Information with Mark Solved Button */}
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium border ${levelColors.bg} ${levelColors.text} ${levelColors.border}`}>
+                              {QUESTION_LEVEL_LABELS[question.level]}
+                            </span>
+                            
+                            {category && (
+                              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                                <FolderOpen className="w-4 h-4" />
+                                <span>{category.name}</span>
+                              </div>
+                            )}
+
+                            {/* Solved Date Info */}
+                            {solved && solvedAt && (
+                              <div className="flex items-center space-x-2 text-sm text-green-600 dark:text-green-400">
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>Solved on {dateUtils.formatDate(solvedAt)}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Mark Solved Button */}
+                          <button
+                            onClick={handleToggleSolved}
+                            disabled={updateProgressMutation.isPending}
+                            className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ${
+                              solved
+                                ? 'bg-red-600 hover:bg-red-700 text-white'
+                                : 'bg-green-600 hover:bg-green-700 text-white'
+                            } ${
+                              updateProgressMutation.isPending 
+                                ? 'opacity-50 cursor-not-allowed' 
+                                : ''
+                            }`}
+                          >
+                            {updateProgressMutation.isPending ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            ) : solved ? (
+                              <X className="w-4 h-4" />
+                            ) : (
+                              <Check className="w-4 h-4" />
+                            )}
+                            <span>
+                              {updateProgressMutation.isPending 
+                                ? 'Updating...' 
+                                : solved 
+                                  ? 'Mark Unsolved' 
+                                  : 'Mark Solved'
+                              }
+                            </span>
+                          </button>
+                        </div>
+                      </div>
                       
                       {/* Use MarkdownRenderer to properly render statement with images in correct positions */}
                       <div className="mb-6">
