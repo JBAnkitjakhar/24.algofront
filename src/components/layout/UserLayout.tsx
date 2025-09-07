@@ -36,7 +36,7 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   {
     id: 'me',
-    label: 'me',
+    label: 'Me',
     icon: Home,
     href: '/me',
     description: 'Overview and stats'

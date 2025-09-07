@@ -1,4 +1,4 @@
-// src/app/questions/[id]/page.tsx - CLEAN: Uses global CSS styles
+// src/app/questions/[id]/page.tsx - COMPLETE CODE with visualizer indicators
 
 'use client';
 
@@ -23,12 +23,81 @@ import {
   Play,
   Code,
 } from 'lucide-react';
+import { CubeTransparentIcon } from '@heroicons/react/24/outline';
 import { useQuestionById } from '@/hooks/useQuestionManagement';
 import { useCategoryById } from '@/hooks/useCategoryManagement';
 import { useQuestionProgress, useUpdateQuestionProgress } from '@/hooks/useUserProgress';
+import { useVisualizerFilesBySolution } from '@/hooks/useSolutionManagement';
 import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
 import type { Solution } from '@/types';
+
+// Solution Card Component with visualizer indicator
+function SolutionCard({ solution, onClick }: { solution: Solution; onClick: () => void }) {
+  // Fetch visualizer files for this specific solution
+  const { data: visualizerFiles } = useVisualizerFilesBySolution(solution.id);
+  const hasVisualizers = Boolean(visualizerFiles?.data && visualizerFiles.data.length > 0);
+
+  return (
+    <div
+      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+      onClick={onClick}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            By {solution.createdByName} • {dateUtils.formatRelativeTime(solution.createdAt)}
+          </p>
+        </div>
+      </div>
+      
+      {/* Solution Preview */}
+      <div className="mb-3">
+        <div className="text-gray-700 dark:text-gray-300 line-clamp-3 text-sm">
+          {solution.content
+            .replace(/!\[.*?\]\(.*?\)/g, "[Image]")
+            .replace(/```[\s\S]*?```/g, "[Code Block]")
+            .substring(0, 200)}
+          {solution.content.length > 200 ? "..." : ""}
+        </div>
+      </div>
+
+      {/* Solution Features */}
+      <div className="flex flex-wrap gap-1.5">
+        {solution.codeSnippet && (
+          <span className="inline-flex items-center px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded text-xs">
+            <Code className="w-3 h-3 mr-1" />
+            {solution.codeSnippet.language}
+          </span>
+        )}
+        {solution.youtubeLink && (
+          <span className="inline-flex items-center px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded text-xs">
+            <Play className="w-3 h-3 mr-1" />
+            Video
+          </span>
+        )}
+        {solution.driveLink && (
+          <span className="inline-flex items-center px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded text-xs">
+            <FolderOpen className="w-3 h-3 mr-1" />
+            Resources
+          </span>
+        )}
+        {solution.imageUrls && solution.imageUrls.length > 0 && (
+          <span className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs">
+            {solution.imageUrls.length} Image{solution.imageUrls.length !== 1 ? 's' : ''}
+          </span>
+        )}
+        {/* NEW: Visualizer indicator */}
+        {hasVisualizers && (
+          <span className="inline-flex items-center px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 rounded text-xs">
+            <CubeTransparentIcon className="w-3 h-3 mr-1" />
+            Visualizer
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function QuestionDetailContent() {
   const params = useParams();
@@ -374,57 +443,11 @@ function QuestionDetailContent() {
                         </div>
                       ) : (
                         solutions.map((solution) => (
-                          <div
+                          <SolutionCard
                             key={solution.id}
-                            className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                            solution={solution}
                             onClick={() => setSelectedSolution(solution)}
-                          >
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  By {solution.createdByName} • {dateUtils.formatRelativeTime(solution.createdAt)}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            {/* Solution Preview */}
-                            <div className="mb-3">
-                              <div className="text-gray-700 dark:text-gray-300 line-clamp-3 text-sm">
-                                {solution.content
-                                  .replace(/!\[.*?\]\(.*?\)/g, "[Image]")
-                                  .replace(/```[\s\S]*?```/g, "[Code Block]")
-                                  .substring(0, 200)}
-                                {solution.content.length > 200 ? "..." : ""}
-                              </div>
-                            </div>
-
-                            {/* Solution Features */}
-                            <div className="flex flex-wrap gap-1.5">
-                              {solution.codeSnippet && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded text-xs">
-                                  <Code className="w-3 h-3 mr-1" />
-                                  {solution.codeSnippet.language}
-                                </span>
-                              )}
-                              {solution.youtubeLink && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded text-xs">
-                                  <Play className="w-3 h-3 mr-1" />
-                                  Video
-                                </span>
-                              )}
-                              {solution.driveLink && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded text-xs">
-                                  <FolderOpen className="w-3 h-3 mr-1" />
-                                  Resources
-                                </span>
-                              )}
-                              {solution.imageUrls && solution.imageUrls.length > 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs">
-                                  {solution.imageUrls.length} Image{solution.imageUrls.length !== 1 ? 's' : ''}
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                          />
                         ))
                       )}
                     </div>
