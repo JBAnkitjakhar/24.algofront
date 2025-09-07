@@ -96,7 +96,7 @@ function CallbackHandler() {
 
         // Redirect based on user role using centralized role utilities
         const isUserAdmin = userResponse.data.role === 'SUPERADMIN' || userResponse.data.role === 'ADMIN';
-        const redirectPath = isUserAdmin ? ROUTES.ADMIN : ROUTES.DASHBOARD;
+        const redirectPath = isUserAdmin ? ROUTES.ADMIN : ROUTES.ME;
           
         // Use replace to prevent back navigation issues
         router.replace(redirectPath);

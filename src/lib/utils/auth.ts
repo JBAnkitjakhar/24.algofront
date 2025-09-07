@@ -186,7 +186,7 @@ export const roleUtils = {
   getRoleChangeImpact: (oldRole: UserRole, newRole: UserRole): string => {
     if (roleUtils.isPromotion(oldRole, newRole)) {
       if (oldRole === UserRole.USER && newRole === UserRole.ADMIN) {
-        return 'This user will gain access to admin features including question management, solution creation, and analytics dashboard.';
+        return 'This user will gain access to admin features including question management, solution creation, and analytics page.';
       }
       if (newRole === UserRole.SUPERADMIN) {
         return 'This user will gain full system access including user role management and system settings.';
@@ -217,7 +217,7 @@ export const roleUtils = {
           'All user permissions',
           'Create and manage questions',
           'Create official solutions',
-          'View analytics dashboard',
+          'View analytics page',
           'Manage categories',
           'View user progress data',
           'NO role management permissions',

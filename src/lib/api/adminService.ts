@@ -12,7 +12,7 @@ import type {
 
 class AdminApiService {
   /**
-   * Get admin dashboard statistics
+   * Get admin statistics
    */
   async getAdminStats(): Promise<ApiResponse<AdminStats>> {
     return await apiClient.get<AdminStats>('/admin/stats');

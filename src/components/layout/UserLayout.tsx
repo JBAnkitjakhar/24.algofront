@@ -13,7 +13,6 @@ import {
   Code,
   BookOpen,
   FolderOpen,
-  TrendingUp,
   LogOut,
   User,
   Menu,
@@ -36,10 +35,10 @@ interface SidebarItem {
 
 const sidebarItems: SidebarItem[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
+    id: 'me',
+    label: 'me',
     icon: Home,
-    href: '/dashboard',
+    href: '/me',
     description: 'Overview and stats'
   },
   {
@@ -63,13 +62,6 @@ const sidebarItems: SidebarItem[] = [
     href: '/compiler',
     description: 'Code editor'
   },
-  {
-    id: 'progress',
-    label: 'Progress',
-    icon: TrendingUp,
-    href: '/userprogress',
-    description: 'Track your growth'
-  }
 ];
 
 export default function UserLayout({ children }: UserLayoutProps) {
@@ -143,8 +135,8 @@ export default function UserLayout({ children }: UserLayoutProps) {
   };
 
   const isActiveRoute = (href: string): boolean => {
-    if (href === '/dashboard') {
-      return pathname === '/dashboard';
+    if (href === '/me') {
+      return pathname === '/me';
     }
     return pathname.startsWith(href);
   };
@@ -264,11 +256,11 @@ export default function UserLayout({ children }: UserLayoutProps) {
                   : 'px-3 py-2'
                 }
               `}
-              title={isCollapsed ? 'Admin Panel' : ''}
+              title={isCollapsed ? 'Admin' : ''}
             >
               <User size={16} className="flex-shrink-0" />
               {(!isCollapsed || isMobile) && (
-                <span className="ml-3 font-medium">Admin Panel</span>
+                <span className="ml-3 font-medium">Admin Page</span>
               )}
             </button>
           </div>

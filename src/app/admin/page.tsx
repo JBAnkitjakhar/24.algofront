@@ -1,4 +1,4 @@
-// src/app/admin/page.tsx - Main Admin Dashboard
+// src/app/admin/page.tsx - Main Admin Home Page
 'use client';
 
 import { 
@@ -322,13 +322,13 @@ function RecentActivity() {
   );
 }
 
-export default function AdminDashboardPage() {
+export default function AdminHomePage() {
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Dashboard Overview</h2>
+          <h2 className="text-3xl font-bold text-gray-900">Overview</h2>
           <p className="mt-1 text-sm text-gray-500">
             Monitor your platforms performance and manage key metrics.
           </p>

@@ -18,7 +18,7 @@ export default function AdminHeader() {
           {/* Title */}
           <div className="flex items-center">
             <h1 className="text-2xl font-bold text-gray-900">
-              Admin Dashboard
+              Admin page
             </h1>
           </div>
 

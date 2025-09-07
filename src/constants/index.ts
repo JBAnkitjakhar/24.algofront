@@ -110,7 +110,7 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/auth/login',
   CALLBACK: '/auth/callback', 
-  DASHBOARD: '/dashboard',
+  ME: '/me',
   ADMIN: '/admin',
   QUESTIONS: '/questions',
   QUESTION_DETAIL: (id: string) => `/questions/${id}`,
@@ -122,7 +122,7 @@ export const ROUTES = {
 } as const;
 
 export const ADMIN_ROUTES = {
-  DASHBOARD: '/admin',
+  ME: '/admin',
   QUESTIONS: '/admin/questions',
   SOLUTIONS: '/admin/solutions',
   USERS: '/admin/users',

@@ -7,7 +7,7 @@ import { AdminStats, SystemSettings, SystemHealth, ApplicationMetrics, GlobalPro
 import toast from 'react-hot-toast';
 
 /**
- * Hook to get admin dashboard statistics
+ * Hook to get admin statistics
  */
 export function useAdminStats() {
   return useQuery({

@@ -1,4 +1,4 @@
-// src/app/dashboard/page.tsx
+// src/app/me/page.tsx
 
 'use client';
 
@@ -9,7 +9,7 @@ import { roleUtils } from '@/lib/utils/auth';
 import { dateUtils, stringUtils } from '@/lib/utils/common';
 import { BookOpen, Code, TrendingUp, Award, Clock } from 'lucide-react';
 
-function DashboardContent() {
+function Content() {
   const { user, isAdmin } = useAuth();
 
   if (!user) return null;
@@ -260,14 +260,14 @@ function DashboardContent() {
                     <dd className="mt-1 text-sm text-gray-900 dark:text-white">{dateUtils.formatDate(user.createdAt)}</dd>
                   </div>
                   
-                  {/* Admin Panel Link */}
+                  {/* Admin page Link */}
                   {isAdmin() && (
                     <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                       <button
                         onClick={() => window.location.href = '/admin'}
                         className="w-full flex items-center justify-center px-4 py-2 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors font-medium"
                       >
-                        Admin Dashboard →
+                        Admin page →
                       </button>
                     </div>
                   )}
@@ -281,10 +281,10 @@ function DashboardContent() {
   );
 }
 
-export default function DashboardPage() {
+export default function MePage() {
   return (
     <ProtectedRoute>
-      <DashboardContent />
+      <Content />
     </ProtectedRoute>
   );
 }

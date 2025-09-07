@@ -32,7 +32,7 @@ export default function AdminSidebar({ isSuperAdmin }: AdminSidebarProps) {
   const pathname = usePathname();
 
   const navigation: SidebarItem[] = [
-    { name: 'Dashboard', href: ADMIN_ROUTES.DASHBOARD, icon: HomeIcon },
+    { name: 'Overview', href: ADMIN_ROUTES.ME, icon: HomeIcon },
     { name: 'Analytics', href: ADMIN_ROUTES.ANALYTICS, icon: ChartPieIcon },
     { name: 'Questions', href: ADMIN_ROUTES.QUESTIONS, icon: QuestionMarkCircleIcon },
     { name: 'Solutions', href: ADMIN_ROUTES.SOLUTIONS, icon: LightBulbIcon },
@@ -51,7 +51,7 @@ export default function AdminSidebar({ isSuperAdmin }: AdminSidebarProps) {
           <Link href={ROUTES.HOME} className="flex items-center">
             <ShieldCheckIcon className="h-8 w-8 text-blue-600" />
             <span className="ml-2 text-xl font-bold text-gray-900">
-              Admin Panel
+              Admin Page
             </span>
           </Link>
         </div>
@@ -85,14 +85,14 @@ export default function AdminSidebar({ isSuperAdmin }: AdminSidebarProps) {
           </nav>
         </div>
 
-        {/* User Dashboard Link */}
+        {/* User page Link */}
         <div className="flex-shrink-0 px-2 py-4 border-t border-gray-200">
           <Link
-            href={ROUTES.DASHBOARD}
+            href={ROUTES.ME}
             className="group flex items-center px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900 transition-colors"
           >
             <ChartBarIcon className="mr-3 flex-shrink-0 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-            Back to Dashboard
+            Back to home
           </Link>
         </div>
       </div>

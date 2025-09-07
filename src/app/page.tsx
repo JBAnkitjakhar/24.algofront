@@ -13,10 +13,10 @@ export default function HomePage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Redirect authenticated users to appropriate dashboard
+      // Redirect authenticated users to appropriate me page
       const redirectPath = user.role === 'ADMIN' || user.role === 'SUPERADMIN' 
         ? ROUTES.ADMIN 
-        : ROUTES.DASHBOARD;
+        : ROUTES.ME;
       router.push(redirectPath);
     } else {
       // Redirect unauthenticated users to login

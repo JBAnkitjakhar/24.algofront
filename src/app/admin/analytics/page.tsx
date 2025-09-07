@@ -1,4 +1,4 @@
-// src/app/admin/analytics/page.tsx - Analytics dashboard
+// src/app/admin/analytics/page.tsx - Analytics page
 'use client';
 
 import {

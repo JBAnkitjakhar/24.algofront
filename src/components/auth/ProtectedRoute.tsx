@@ -39,12 +39,12 @@ export default function ProtectedRoute({
 
     // Check admin requirements
     if (requireSuperAdmin && !isSuperAdmin()) {
-      router.push(ROUTES.DASHBOARD);
+      router.push(ROUTES.ME);
       return;
     }
 
     if (requireAdmin && !isAdmin()) {
-      router.push(ROUTES.DASHBOARD);
+      router.push(ROUTES.ME);
       return;
     }
   }, [isMounted, isAuthenticated, user, isLoading, requireAdmin, requireSuperAdmin, router, isAdmin, isSuperAdmin]);
@@ -79,10 +79,10 @@ export default function ProtectedRoute({
           <p className="mt-1 text-sm text-gray-500">You need Super Admin privileges to access this page.</p>
           <div className="mt-6">
             <button
-              onClick={() => router.push(ROUTES.DASHBOARD)}
+              onClick={() => router.push(ROUTES.ME)}
               className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              Go to Dashboard
+              Go to Home
             </button>
           </div>
         </div>
@@ -103,10 +103,10 @@ export default function ProtectedRoute({
           <p className="mt-1 text-sm text-gray-500">You need Admin privileges to access this page.</p>
           <div className="mt-6">
             <button
-              onClick={() => router.push(ROUTES.DASHBOARD)}
+              onClick={() => router.push(ROUTES.ME)}
               className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              Go to Dashboard
+              Go to Home
             </button>
           </div>
         </div>
