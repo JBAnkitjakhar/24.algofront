@@ -1,4 +1,4 @@
-// src/components/compiler/LanguageSelector.tsx - ULTRA-COMPACT: Matches header size
+// src/components/compiler/LanguageSelector.tsx  
 
 import React from 'react';
 import { Language, SUPPORTED_LANGUAGES } from '@/lib/compiler/languages';

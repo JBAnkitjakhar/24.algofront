@@ -1,8 +1,8 @@
-// src/types/index.ts - UPDATED centralized exports with Category and Question types
+// src/types/index.ts 
 
 export * from './auth';
 export * from './api';
-export * from './admin'; // This now includes user management, category, and question types
+export * from './admin'; // This now includes user management, category, question, and approach types
 
 // Re-export commonly used types for convenience
 export type { User, AuthState, AuthResponse} from './auth';
@@ -31,6 +31,13 @@ export type {
   ImageUploadResponse,
   FileUploadResponse,
   Solution,
+  // NEW: Approach types
+  ApproachDTO,
+  CreateApproachRequest,
+  UpdateApproachRequest,
+  ApproachLimitsResponse,
+  ApproachSizeUsage,
+  ApproachStats,
 } from './admin';
 
 // Export UserRole and QuestionLevel as both type and value (enum)

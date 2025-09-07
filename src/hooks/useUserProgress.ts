@@ -1,4 +1,4 @@
-// src/hooks/useUserProgress.ts - User progress management hooks (FIXED - No any types)
+// src/hooks/useUserProgress.ts  
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userProgressApiService } from '@/lib/api/userProgressService';

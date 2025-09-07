@@ -1,4 +1,4 @@
-// src/types/admin.ts - COMPLETE UPDATED WITH USER PROGRESS TYPES
+// src/types/admin.ts - COMPLETE UPDATED WITH USER PROGRESS AND APPROACH TYPES
 
 import { UserRole } from "./auth";
 
@@ -205,6 +205,67 @@ export interface CategoryProgressStats {
     hard: number;
   };
   categoryProgressPercentage: number;
+}
+
+// ==================== APPROACH TYPES - NEW ====================
+
+export interface ApproachDTO {
+  id: string;
+  questionId: string;
+  questionTitle: string;
+  userId: string;
+  userName: string;
+  textContent: string;
+  codeContent?: string;
+  codeLanguage?: string;
+  contentSize: number;
+  createdAt: string; // ISO string from LocalDateTime
+  updatedAt: string; // ISO string from LocalDateTime
+}
+
+export interface CreateApproachRequest {
+  textContent: string;
+  codeContent?: string;
+  codeLanguage?: string;
+}
+
+export interface UpdateApproachRequest {
+  textContent: string;
+  codeContent?: string;
+  codeLanguage?: string;
+}
+
+export interface ApproachLimitsResponse {
+  canAdd: boolean;
+  canAddCount: boolean;
+  canAddSize: boolean;
+  currentCount: number;
+  maxCount: number;
+  remainingCount: number;
+  currentSize: number;
+  newSize: number;
+  totalSizeAfterUpdate: number;
+  maxAllowedSize: number;
+  remainingBytes: number;
+}
+
+export interface ApproachSizeUsage {
+  totalUsed: number;
+  totalUsedKB: number;
+  remaining: number;
+  remainingKB: number;
+  maxAllowed: number;
+  maxAllowedKB: number;
+  usagePercentage: number;
+  approachCount: number;
+  maxApproaches: number;
+}
+
+export interface ApproachStats {
+  totalApproaches: number;
+  totalContentSize: number;
+  totalContentSizeKB: number;
+  approachesByQuestion: Record<string, number>;
 }
 
 // Category Management Types

@@ -1,4 +1,4 @@
-// src/lib/api/userProgressService.ts - User progress management API service
+// src/lib/api/userProgressService.ts  
 
 import { apiClient } from './client';
 import type { ApiResponse } from '@/types/api';

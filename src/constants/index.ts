@@ -59,6 +59,21 @@ export const USER_PROGRESS_ENDPOINTS = {
   USER_ALL_PROGRESS: (userId: string) => `${API_BASE_URL}/users/${userId}/progress/all`,
 } as const;
 
+// APPROACH ENDPOINTS - NEW
+export const APPROACH_ENDPOINTS = {
+  GET_BY_ID: (id: string) => `${API_BASE_URL}/approaches/${id}`,
+  BY_QUESTION: (questionId: string) => `${API_BASE_URL}/approaches/question/${questionId}`,
+  CREATE_FOR_QUESTION: (questionId: string) => `${API_BASE_URL}/approaches/question/${questionId}`,
+  UPDATE: (id: string) => `${API_BASE_URL}/approaches/${id}`,
+  DELETE: (id: string) => `${API_BASE_URL}/approaches/${id}`,
+  MY_APPROACHES: `${API_BASE_URL}/approaches/my-approaches`,
+  MY_RECENT: `${API_BASE_URL}/approaches/my-approaches/recent`,
+  MY_STATS: `${API_BASE_URL}/approaches/my-stats`,
+  SIZE_USAGE: (questionId: string) => `${API_BASE_URL}/approaches/question/${questionId}/size-usage`,
+  CHECK_LIMITS: (questionId: string) => `${API_BASE_URL}/approaches/question/${questionId}/check-limits`,
+  CHECK_SIZE: (questionId: string) => `${API_BASE_URL}/approaches/question/${questionId}/check-size`,
+} as const;
+
 // Solution management endpoints
 export const SOLUTION_ENDPOINTS = {
   LIST: `${API_BASE_URL}/solutions`,
@@ -206,6 +221,16 @@ export const QUERY_KEYS = {
     USER_STATS: (userId: string) => ['userProgress', 'userStats', userId] as const,
     USER_ALL: (userId: string) => ['userProgress', 'userAll', userId] as const,
   },
+  // APPROACH QUERY KEYS - NEW
+  APPROACHES: {
+    BY_QUESTION: (questionId: string) => ['approaches', 'question', questionId] as const,
+    DETAIL: (id: string) => ['approaches', 'detail', id] as const,
+    MY_APPROACHES: ['approaches', 'my'] as const,
+    MY_RECENT: ['approaches', 'my', 'recent'] as const,
+    MY_STATS: ['approaches', 'my', 'stats'] as const,
+    SIZE_USAGE: (questionId: string) => ['approaches', 'size', questionId] as const,
+    LIMITS: (questionId: string) => ['approaches', 'limits', questionId] as const,
+  },
   SOLUTIONS: {
     LIST: ['solutions', 'list'] as const,
     DETAIL: (id: string) => ['solutions', 'detail', id] as const,
@@ -243,6 +268,15 @@ export const SOLUTION_VALIDATION = {
   MAX_VISUALIZERS_PER_SOLUTION: 2,
   CODE_MAX_LENGTH: 10000,
   DESCRIPTION_MAX_LENGTH: 200,
+} as const;
+
+// APPROACH VALIDATION CONSTANTS - NEW
+export const APPROACH_VALIDATION = {
+  TEXT_MIN_LENGTH: 10,
+  TEXT_MAX_LENGTH: 5000,
+  CODE_MAX_LENGTH: 10000,
+  MAX_APPROACHES_PER_QUESTION: 3,
+  MAX_TOTAL_SIZE_PER_USER_PER_QUESTION: 15 * 1024, // 15KB in bytes
 } as const;
 
 // Compiler validation constants

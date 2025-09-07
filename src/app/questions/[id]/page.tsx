@@ -1,4 +1,4 @@
-// src/app/questions/[id]/page.tsx - COMPLETE CODE with visualizer indicators
+// src/app/questions/[id]/page.tsx - COMPLETE CODE with User Approaches integration
 
 'use client';
 
@@ -9,6 +9,7 @@ import UserLayout from '@/components/layout/UserLayout';
 import { QuestionCompilerLayout } from '@/components/compiler/QuestionCompilerLayout';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
 import { SolutionViewer } from '@/components/questions/SolutionViewer';
+import { UserApproaches } from '@/components/questions/UserApproaches';
 import { 
   BookOpen, 
   CheckCircle2, 
@@ -22,12 +23,14 @@ import {
   X,
   Play,
   Code,
+  Upload,
 } from 'lucide-react';
 import { CubeTransparentIcon } from '@heroicons/react/24/outline';
 import { useQuestionById } from '@/hooks/useQuestionManagement';
 import { useCategoryById } from '@/hooks/useCategoryManagement';
 import { useQuestionProgress, useUpdateQuestionProgress } from '@/hooks/useUserProgress';
 import { useVisualizerFilesBySolution } from '@/hooks/useSolutionManagement';
+import { useApproachesByQuestion } from '@/hooks/useApproachManagement';
 import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
 import type { Solution } from '@/types';
@@ -87,7 +90,7 @@ function SolutionCard({ solution, onClick }: { solution: Solution; onClick: () =
             {solution.imageUrls.length} Image{solution.imageUrls.length !== 1 ? 's' : ''}
           </span>
         )}
-        {/* NEW: Visualizer indicator */}
+        {/* Visualizer indicator */}
         {hasVisualizers && (
           <span className="inline-flex items-center px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 rounded text-xs">
             <CubeTransparentIcon className="w-3 h-3 mr-1" />
@@ -117,6 +120,7 @@ function QuestionDetailContent() {
   const solutions = questionDetail?.solutions || [];
 
   const { data: category } = useCategoryById(question?.categoryId || '');
+  const { data: userApproaches = [] } = useApproachesByQuestion(questionId);
 
   // REAL DATA: Get user's progress for this question
   const { data: questionProgress } = useQuestionProgress(questionId);
@@ -223,7 +227,7 @@ function QuestionDetailContent() {
   return (
     <UserLayout>
       <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-        {/* FIXED: Show Solution Viewer in completely isolated container */}
+        {/* Show Solution Viewer in completely isolated container */}
         {selectedSolution ? (
           <div className="h-full">
             <SolutionViewer 
@@ -251,7 +255,7 @@ function QuestionDetailContent() {
                 <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-blue-500/20"></div>
               </div>
 
-              {/* Right Panel - Question Information with Custom Scrollbar */}
+              {/* Right Panel - Question Information */}
               <div
                 className="flex flex-col bg-white dark:bg-gray-800"
                 style={{ width: `${100 - leftPanelWidth}%` }}
@@ -291,14 +295,14 @@ function QuestionDetailContent() {
                     {[
                       { id: 'description', label: 'Description', icon: FileText },
                       { id: 'solutions', label: `Solutions (${solutions.length})`, icon: Lightbulb },
-                      { id: 'submissions', label: 'My Submissions', icon: Play },
+                      { id: 'submissions', label: `My Approaches (${userApproaches.length})`, icon: Upload },
                     ].map((tab) => {
                       const Icon = tab.icon;
                       return (
                         <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id as 'description' | 'solutions' | 'submissions')}
-                          className={`flex items-center space-x-1.5 px-3 border-b-2 font-medium text-sm ${
+                          className={`flex items-center space-x-1.5 px-3 py-2 border-b-2 font-medium text-sm transition-colors ${
                             activeTab === tab.id
                               ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
@@ -309,7 +313,7 @@ function QuestionDetailContent() {
                           <span className="sm:hidden">
                             {tab.id === 'description' ? 'Desc' : 
                              tab.id === 'solutions' ? `Sol (${solutions.length})` : 
-                             'Sub'}
+                             `App (${userApproaches.length})`}
                           </span>
                         </button>
                       );
@@ -321,7 +325,7 @@ function QuestionDetailContent() {
                 <div className="flex-1 overflow-auto custom-scrollbar">
                   {activeTab === 'description' && (
                     <div className="p-4">
-                      {/* SCROLLABLE: Question Title, Level, Category, and Mark Solved Button */}
+                      {/* Question Title, Level, Category, and Mark Solved Button */}
                       <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
                         {/* Question Title */}
                         <div className="flex items-center space-x-2 mb-3">
@@ -391,7 +395,7 @@ function QuestionDetailContent() {
                         </div>
                       </div>
                       
-                      {/* Use MarkdownRenderer to properly render statement with images in correct positions */}
+                      {/* Use MarkdownRenderer to properly render statement with images */}
                       <div className="mb-6">
                         <MarkdownRenderer 
                           content={question.statement}
@@ -453,16 +457,10 @@ function QuestionDetailContent() {
                     </div>
                   )}
 
-                  {/* Submissions tab content */}
+                  {/* NEW: My Approaches tab content */}
                   {activeTab === 'submissions' && (
-                    <div className="p-4 text-center py-12">
-                      <Play className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                        No Submissions Yet
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-400 mb-4">
-                        Your submission history will appear here after you run your code.
-                      </p>
+                    <div className="p-4">
+                      <UserApproaches questionId={questionId} />
                     </div>
                   )}
                 </div>

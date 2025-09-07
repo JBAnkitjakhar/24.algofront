@@ -1,4 +1,4 @@
-// src/components/questions/SolutionViewer.tsx - CLEAN: Uses global CSS styles
+// src/components/questions/SolutionViewer.tsx  
 
 'use client';
 
