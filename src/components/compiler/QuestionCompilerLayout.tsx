@@ -1,4 +1,4 @@
-// src/components/compiler/QuestionCompilerLayout.tsx
+// src/components/compiler/QuestionCompilerLayout.tsx - COMPLETE UPDATED VERSION
 
 "use client";
 
@@ -256,6 +256,56 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     [question.codeSnippets]
   );
 
+  // FIXED: NEW - Approach submission status logic
+  const getApproachSubmissionStatus = useCallback(() => {
+    if (!approachLimits) {
+      return {
+        canSubmit: false,
+        message: 'Loading approach limits...',
+        type: 'loading' as const
+      };
+    }
+
+    // No approaches yet - show encouragement
+    if (approachLimits.currentCount === 0) {
+      const remainingKB = (approachLimits.remainingBytes / 1024).toFixed(1);
+      return {
+        canSubmit: true,
+        message: `Ready to submit! ${approachLimits.maxCount} approaches, ${remainingKB}KB available.`,
+        type: 'info' as const
+      };
+    }
+
+    // Check if we can add more approaches
+    if (!approachLimits.canAdd) {
+      if (!approachLimits.canAddCount) {
+        return {
+          canSubmit: false,
+          message: `Maximum ${approachLimits.maxCount} approaches reached for this question.`,
+          type: 'error' as const
+        };
+      }
+      if (!approachLimits.canAddSize) {
+        const remainingKB = (approachLimits.remainingBytes / 1024).toFixed(1);
+        return {
+          canSubmit: false,
+          message: `Only ${remainingKB}KB remaining. Current approach would exceed limit.`,
+          type: 'error' as const
+        };
+      }
+    }
+
+    // Can still add - show current usage
+    const remainingKB = (approachLimits.remainingBytes / 1024).toFixed(1);
+    const usedKB = ((approachLimits.maxAllowedSize - approachLimits.remainingBytes) / 1024).toFixed(1);
+    
+    return {
+      canSubmit: true,
+      message: `${approachLimits.currentCount}/${approachLimits.maxCount} approaches used. ${usedKB}KB/${(approachLimits.maxAllowedSize / 1024).toFixed(0)}KB used (${remainingKB}KB remaining)`,
+      type: 'info' as const
+    };
+  }, [approachLimits]);
+
   // Debounced resize function to prevent Monaco Editor errors
   const debouncedResizeEditor = useCallback(() => {
     if (resizeTimeoutRef.current) {
@@ -402,7 +452,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     }, 0);
   };
 
-  // NEW: Submit approach handler
+  // UPDATED: Submit approach handler with better validation
   const handleSubmitApproach = () => {
     // Validate code content
     if (!code.trim() || code.trim() === selectedLanguage.defaultCode.trim()) {
@@ -416,25 +466,18 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
       return;
     }
 
-    // Check if within limits
-    if (approachLimits && !approachLimits.canAdd) {
-      if (!approachLimits.canAddCount) {
-        toast.error(`Maximum ${approachLimits.maxCount} approaches allowed per question`);
-        return;
-      }
-      if (!approachLimits.canAddSize) {
-        const remainingKB = (approachLimits.remainingBytes / 1024).toFixed(1);
-        toast.error(`Size limit exceeded. You have ${remainingKB}KB remaining`);
-        return;
-      }
+    const status = getApproachSubmissionStatus();
+    if (!status.canSubmit) {
+      toast.error(status.message);
+      return;
     }
 
-    // Create approach with code as textContent and language info
+    // Create approach with code as codeContent (not textContent)
     createApproachMutation.mutate({
       questionId: question.id,
       data: {
         textContent: "Click edit to add your approach description and explanation...",
-        codeContent: code,
+        codeContent: code.trim(),
         codeLanguage: selectedLanguage.name.toLowerCase(),
       },
     });
@@ -610,7 +653,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     }
   }, [selectedLanguage, getStorageKey, getInitialCodeForLanguage]);
 
-  // Check if user can submit approach
+  // UPDATED: Submit button logic
   const canSubmitApproach = () => {
     if (!code.trim() || code.trim() === selectedLanguage.defaultCode.trim()) {
       return false;
@@ -618,10 +661,12 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     if (code.trim().length < APPROACH_VALIDATION.TEXT_MIN_LENGTH) {
       return false;
     }
-    return approachLimits?.canAdd ?? true;
+    
+    const status = getApproachSubmissionStatus();
+    return status.canSubmit;
   };
 
-  // Get submit button tooltip
+  // UPDATED: Submit button tooltip
   const getSubmitTooltip = () => {
     if (!code.trim() || code.trim() === selectedLanguage.defaultCode.trim()) {
       return "Please write some code to submit your approach";
@@ -629,14 +674,9 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     if (code.trim().length < APPROACH_VALIDATION.TEXT_MIN_LENGTH) {
       return `Code must be at least ${APPROACH_VALIDATION.TEXT_MIN_LENGTH} characters long`;
     }
-    if (approachLimits && !approachLimits.canAddCount) {
-      return `Maximum ${approachLimits.maxCount} approaches allowed per question`;
-    }
-    if (approachLimits && !approachLimits.canAddSize) {
-      const remainingKB = (approachLimits.remainingBytes / 1024).toFixed(1);
-      return `Size limit exceeded. You have ${remainingKB}KB remaining out of ${(approachLimits.maxAllowedSize / 1024).toFixed(1)}KB`;
-    }
-    return "Submit your code as an approach";
+    
+    const status = getApproachSubmissionStatus();
+    return status.message;
   };
 
   return (
@@ -713,8 +753,8 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
             )}
           </div>
 
-          {/* NEW: Submit Approach Button */}
-          <div className="relative">
+          {/* UPDATED: Submit Approach Button */}
+          <div className="relative group">
             <button
               onClick={handleSubmitApproach}
               disabled={!canSubmitApproach() || createApproachMutation.isPending}
@@ -731,10 +771,10 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
               </span>
             </button>
 
-            {/* Approach Limits Indicator */}
+            {/* UPDATED: Approach Status Indicator */}
             {approachLimits && (
-              <div className="absolute top-full right-0 mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                {approachLimits.remainingCount}/{approachLimits.maxCount} approaches, {(approachLimits.remainingBytes / 1024).toFixed(1)}KB left
+              <div className="absolute top-full right-0 mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                {getApproachSubmissionStatus().message}
               </div>
             )}
           </div>
@@ -760,20 +800,24 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
         </div>
       </div>
 
-      {/* Warning for approach limits */}
-      {approachLimits && (!approachLimits.canAddCount || !approachLimits.canAddSize) && (
-        <div className="px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800">
-          <div className="flex items-center space-x-1 text-xs text-yellow-800 dark:text-yellow-200">
-            <AlertCircle size={12} />
-            <span>
-              {!approachLimits.canAddCount 
-                ? `Maximum ${approachLimits.maxCount} approaches reached for this question`
-                : `Only ${(approachLimits.remainingBytes / 1024).toFixed(1)}KB remaining for approaches`
-              }
-            </span>
+      {/* UPDATED: Warning for approach limits */}
+      {(() => {
+        const status = getApproachSubmissionStatus();
+        
+        // Only show error states in the warning section
+        if (status.type !== 'error') {
+          return null;
+        }
+        
+        return (
+          <div className="px-2 py-1 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+            <div className="flex items-center space-x-1 text-xs text-red-800 dark:text-red-200">
+              <AlertCircle size={12} />
+              <span>{status.message}</span>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Main Editor Area */}
       <div className="flex-1 flex flex-col min-h-0">

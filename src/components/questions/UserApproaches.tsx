@@ -1,4 +1,4 @@
-// src/components/questions/UserApproaches.tsx
+// src/components/questions/UserApproaches.tsx  
 
 'use client';
 
@@ -10,6 +10,8 @@ import {
   FileText,
   AlertCircle,
   XCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { 
   useApproachesByQuestion, 
@@ -33,15 +35,44 @@ interface ApproachModalProps {
   isLoading: boolean;
 }
 
-// Modal for editing approach description
+// Available programming languages for the selector
+const PROGRAMMING_LANGUAGES = [
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'python', label: 'Python' },
+  { value: 'java', label: 'Java' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'c', label: 'C' },
+  { value: 'csharp', label: 'C#' },
+  { value: 'go', label: 'Go' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'php', label: 'PHP' },
+  { value: 'ruby', label: 'Ruby' },
+  { value: 'kotlin', label: 'Kotlin' },
+  { value: 'swift', label: 'Swift' },
+  { value: 'scala', label: 'Scala' },
+  { value: 'dart', label: 'Dart' },
+  { value: 'perl', label: 'Perl' },
+  { value: 'lua', label: 'Lua' },
+  { value: 'r', label: 'R' },
+  { value: 'sql', label: 'SQL' },
+];
+
+// ENHANCED Modal for editing approach with code editing capabilities
 function EditApproachModal({ approach, isOpen, onClose, onSave, isLoading }: ApproachModalProps) {
   const [textContent, setTextContent] = useState(approach?.textContent || '');
+  const [codeContent, setCodeContent] = useState(approach?.codeContent || '');
+  const [codeLanguage, setCodeLanguage] = useState(approach?.codeLanguage || 'javascript');
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'description' | 'code'>('description');
 
-  // FIXED: Reset form when approach changes - use useEffect instead of useState
+  // Reset form when approach changes
   useEffect(() => {
     setTextContent(approach?.textContent || '');
+    setCodeContent(approach?.codeContent || '');
+    setCodeLanguage(approach?.codeLanguage || 'javascript');
     setError(null);
+    setActiveTab('description');
   }, [approach]);
 
   if (!isOpen || !approach) return null;
@@ -65,19 +96,30 @@ function EditApproachModal({ approach, isOpen, onClose, onSave, isLoading }: App
       return;
     }
 
+    // Validate code content
+    if (!codeContent.trim()) {
+      setError('Code content cannot be empty');
+      return;
+    }
+
+    if (codeContent.length > APPROACH_VALIDATION.CODE_MAX_LENGTH) {
+      setError(`Code must not exceed ${APPROACH_VALIDATION.CODE_MAX_LENGTH} characters`);
+      return;
+    }
+
     onSave({
       textContent: textContent.trim(),
-      codeContent: approach.codeContent,
-      codeLanguage: approach.codeLanguage,
+      codeContent: codeContent.trim(),
+      codeLanguage: codeLanguage.toLowerCase(),
     });
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Edit Approach Description
+            Edit Approach
           </h3>
           <button
             onClick={onClose}
@@ -88,28 +130,98 @@ function EditApproachModal({ approach, isOpen, onClose, onSave, isLoading }: App
           </button>
         </div>
 
-        <div className="p-4 space-y-4">
-          {/* Text Content Editor */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Approach Description
-            </label>
-            <textarea
-              value={textContent}
-              onChange={(e) => setTextContent(e.target.value)}
-              placeholder="Describe your approach, algorithm, time/space complexity, etc..."
-              className="w-full h-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
-              disabled={isLoading}
-            />
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-              <span>
-                {textContent.length}/{APPROACH_VALIDATION.TEXT_MAX_LENGTH} characters
-              </span>
-              <span>
-                Min: {APPROACH_VALIDATION.TEXT_MIN_LENGTH} characters
-              </span>
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setActiveTab('description')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'description'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            Description
+          </button>
+          <button
+            onClick={() => setActiveTab('code')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'code'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            Code
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4 space-y-4">
+          {activeTab === 'description' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Approach Description
+              </label>
+              <textarea
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+                placeholder="Describe your approach, algorithm, time/space complexity, etc..."
+                className="w-full h-40 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
+                disabled={isLoading}
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <span>
+                  {textContent.length}/{APPROACH_VALIDATION.TEXT_MAX_LENGTH} characters
+                </span>
+                <span>
+                  Min: {APPROACH_VALIDATION.TEXT_MIN_LENGTH} characters
+                </span>
+              </div>
             </div>
-          </div>
+          )}
+
+          {activeTab === 'code' && (
+            <div className="space-y-4">
+              {/* Language Selector */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Programming Language
+                </label>
+                <select
+                  value={codeLanguage}
+                  onChange={(e) => setCodeLanguage(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  disabled={isLoading}
+                >
+                  {PROGRAMMING_LANGUAGES.map((lang) => (
+                    <option key={lang.value} value={lang.value}>
+                      {lang.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Code Editor */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Code Content
+                </label>
+                <textarea
+                  value={codeContent}
+                  onChange={(e) => setCodeContent(e.target.value)}
+                  placeholder="Enter your code solution here..."
+                  className="w-full h-80 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white font-mono text-sm resize-none"
+                  disabled={isLoading}
+                />
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <span>
+                    {codeContent.length}/{APPROACH_VALIDATION.CODE_MAX_LENGTH} characters
+                  </span>
+                  <span>
+                    Language: {PROGRAMMING_LANGUAGES.find(l => l.value === codeLanguage)?.label}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Error Message */}
           {error && (
@@ -118,21 +230,6 @@ function EditApproachModal({ approach, isOpen, onClose, onSave, isLoading }: App
               <span>{error}</span>
             </div>
           )}
-
-          {/* FIXED: Code Preview (Read-only) - replaced CodeSyntaxHighlighter with simple pre/code */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Code ({approach.codeLanguage})
-            </label>
-            <div className="border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
-              <pre 
-                className="text-sm font-mono bg-gray-50 dark:bg-gray-900 p-3 overflow-auto text-gray-900 dark:text-gray-100 custom-scrollbar"
-                style={{ maxHeight: "200px" }}
-              >
-                <code>{approach.codeContent || ''}</code>
-              </pre>
-            </div>
-          </div>
         </div>
 
         <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-700">
@@ -145,7 +242,7 @@ function EditApproachModal({ approach, isOpen, onClose, onSave, isLoading }: App
           </button>
           <button
             onClick={handleSave}
-            disabled={isLoading || !textContent.trim()}
+            disabled={isLoading || !textContent.trim() || !codeContent.trim()}
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? 'Saving...' : 'Save Changes'}
@@ -156,7 +253,7 @@ function EditApproachModal({ approach, isOpen, onClose, onSave, isLoading }: App
   );
 }
 
-// Individual approach card component
+// Individual approach card component with truncation
 function ApproachCard({ 
   approach, 
   onEdit, 
@@ -167,12 +264,22 @@ function ApproachCard({
   onDelete: () => void; 
 }) {
   const [showCode, setShowCode] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   const handleDelete = () => {
     if (window.confirm('Are you sure you want to delete this approach? This action cannot be undone.')) {
       onDelete();
     }
   };
+
+  // FIXED: Truncate description logic
+  const descriptionLines = approach.textContent.split('\n');
+  const shouldTruncateDescription = descriptionLines.length > 3 || approach.textContent.length > 200;
+  const truncatedDescription = shouldTruncateDescription && !showFullDescription
+    ? (descriptionLines.length > 3 
+        ? descriptionLines.slice(0, 3).join('\n') + '...' 
+        : approach.textContent.substring(0, 200) + '...')
+    : approach.textContent;
 
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
@@ -193,7 +300,7 @@ function ApproachCard({
           <button
             onClick={onEdit}
             className="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            title="Edit description"
+            title="Edit approach"
           >
             <Edit size={14} />
           </button>
@@ -207,16 +314,36 @@ function ApproachCard({
         </div>
       </div>
 
-      {/* Description */}
+      {/* Description with truncation */}
       <div className="mb-3">
         {approach.textContent === "Click edit to add your approach description and explanation..." ? (
           <p className="text-gray-500 dark:text-gray-400 text-sm italic">
             Click the edit button to add your approach description and explanation...
           </p>
         ) : (
-          <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">
-            {approach.textContent}
-          </p>
+          <div>
+            <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">
+              {truncatedDescription}
+            </p>
+            {shouldTruncateDescription && (
+              <button
+                onClick={() => setShowFullDescription(!showFullDescription)}
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs mt-1 flex items-center space-x-1"
+              >
+                {showFullDescription ? (
+                  <>
+                    <ChevronUp size={12} />
+                    <span>Show less</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown size={12} />
+                    <span>Show more</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -285,7 +412,7 @@ export function UserApproaches({ questionId }: UserApproachesProps) {
 
   // Handle delete approach
   const handleDeleteApproach = (id: string) => {
-    deleteApproachMutation.mutate(id);
+    deleteApproachMutation.mutate({ id, questionId });
   };
 
   // Loading state
