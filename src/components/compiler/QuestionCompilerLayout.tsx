@@ -608,9 +608,21 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     }
   };
 
+  // ADDED: Get status text color for bottom status display
+  const getStatusTextColor = () => {
+    switch (submissionStatus.type) {
+      case 'error':
+        return "text-red-600 dark:text-red-400";
+      case 'warning':
+        return "text-orange-600 dark:text-orange-400";
+      default:
+        return "text-blue-600 dark:text-blue-400";
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* UPDATED HEADER with Submit Approach Button */}
+      {/* UPDATED HEADER - Removed warning/error sections */}
       <div className="flex items-center justify-between px-2 py-1 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-1.5">
           <h2 className="text-xs font-medium text-gray-900 dark:text-white">
@@ -722,25 +734,6 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
           </button>
         </div>
       </div>
-
-      {/* UPDATED: Warning section with centralized status */}
-      {submissionStatus.type === 'error' && (
-        <div className="px-2 py-1 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-          <div className="flex items-center space-x-1 text-xs text-red-800 dark:text-red-200">
-            <AlertCircle size={12} />
-            <span>{submissionStatus.message}</span>
-          </div>
-        </div>
-      )}
-
-      {submissionStatus.type === 'warning' && (
-        <div className="px-2 py-1 bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800">
-          <div className="flex items-center space-x-1 text-xs text-orange-800 dark:text-orange-200">
-            <AlertCircle size={12} />
-            <span>{submissionStatus.message}</span>
-          </div>
-        </div>
-      )}
 
       {/* Main Editor Area */}
       <div className="flex-1 flex flex-col min-h-0">
@@ -865,7 +858,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
         )}
       </div>
 
-      {/* Bottom Action Bar */}
+      {/* UPDATED: Bottom Action Bar with approach status moved here */}
       <div className="px-3 py-1 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1.5">
@@ -896,17 +889,32 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
             )}
           </div>
 
+          {/* Center - Error message if any */}
           {error && (
             <div className="text-xs text-red-600 dark:text-red-400">
               Error: {error.message}
             </div>
           )}
 
-          {/* UPDATED: Size indicator using centralized calculator */}
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            {ApproachLimitCalculator.formatSize(
-              ApproachLimitCalculator.calculateContentSize("", code)
-            )}
+          {/* UPDATED: Right side with approach status and code size */}
+          <div className="flex items-center space-x-3 text-xs">
+            {/* Approach Status */}
+            <div className={`flex items-center space-x-1 ${getStatusTextColor()}`}>
+              {(submissionStatus.type === 'error' || submissionStatus.type === 'warning') && (
+                <AlertCircle size={12} />
+              )}
+              <span>{submissionStatus.message}</span>
+            </div>
+            
+            {/* Code Size Separator */}
+            <div className="h-3 w-px bg-gray-300 dark:bg-gray-600"></div>
+            
+            {/* Code Size */}
+            <div className="text-gray-500 dark:text-gray-400">
+              {ApproachLimitCalculator.formatSize(
+                ApproachLimitCalculator.calculateContentSize("", code)
+              )}
+            </div>
           </div>
         </div>
       </div>

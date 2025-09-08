@@ -17,13 +17,15 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { LanguageSelector } from '@/components/compiler/LanguageSelector';
 import { useCodeExecution } from '@/hooks/useCodeExecution';
 import { 
   useUpdateApproach, 
   useSubmissionStatus,
-  useContentValidation 
+  useContentValidation,
+  useApproachesByQuestion, // Add this import for actual count
 } from '@/hooks/useApproachManagement';
 import { ApproachLimitCalculator } from '@/lib/utils/approachLimits';
 import { APPROACH_VALIDATION } from '@/constants';
@@ -278,13 +280,19 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
   const { mutate: executeCode, isPending: codeExecutePending } = useCodeExecution();
   const updateApproachMutation = useUpdateApproach();
   
-  // Use centralized hooks for validation and limits
+  // FIXED: Use separate hooks for validation vs display
+  // 1. For validation - exclude current approach to check if content fits
   const submissionStatus = useSubmissionStatus(
     approach.questionId,
     textContent,
     code,
-    approach.id // Exclude current approach from limit check
+    approach.id // This properly excludes current approach from validation
   );
+  
+  // 2. For display - get actual count including current approach
+  const { data: allApproaches = [] } = useApproachesByQuestion(approach.questionId);
+  const actualApproachCount = allApproaches.length; // This includes the current approach
+  
   const contentValidation = useContentValidation(textContent, code);
 
   // Track changes
@@ -544,6 +552,17 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
     );
   };
 
+  // Reset to original values
+  const handleReset = () => {
+    setCode(approach.codeContent || '');
+    setTextContent(approach.textContent || '');
+    setSelectedLanguage(getInitialLanguage());
+    setInput('');
+    setOutput('');
+    setShowInputPanel(false);
+    setShowOutputPanel(false);
+  };
+
   // Copy output
   const handleCopyOutput = async () => {
     try {
@@ -623,23 +642,43 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
     
     return "bg-blue-600 text-white hover:bg-blue-700";
   };
+ 
+  // FIXED: Create display status message that shows actual count
+  const getDisplayStatusMessage = () => {
+    // Keep the validation message for content validation
+    if (!contentValidation.valid) {
+      return {
+        message: contentValidation.errors[0],
+        type: 'error' as const,
+        color: "text-red-600 dark:text-red-400"
+      };
+    }
+
+    // For display purposes, show the actual count (including current approach)
+    const maxApproaches = APPROACH_VALIDATION.MAX_APPROACHES_PER_QUESTION;
+    const sizeAvailable = ApproachLimitCalculator.formatSize(
+      APPROACH_VALIDATION.MAX_TOTAL_SIZE_PER_USER_PER_QUESTION - 
+      ApproachLimitCalculator.calculateContentSize(textContent, code)
+    );
+
+    // Use actual count for display instead of validation count
+    return {
+      message: `Editing approach ${actualApproachCount}/${maxApproaches}. ${sizeAvailable} available.`,
+      type: 'info' as const,
+      color: "text-blue-600 dark:text-blue-400"
+    };
+  };
+
+  const displayStatus = getDisplayStatusMessage();
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={onBack}
-            className="flex items-center space-x-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-          >
-            <ArrowLeft size={16} />
-            <span>Back to Approaches</span>
-          </button>
-          <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+      {/* UPDATED: Compact Header - moved navigation to right side */}
+      <div className="flex items-center justify-between px-2 py-1 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center space-x-1.5">
+          <h2 className="text-xs font-medium text-gray-900 dark:text-white">
             Edit Approach
-          </h1>
+          </h2>
           {hasChanges && (
             <span className="text-xs text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 px-2 py-1 rounded">
               Unsaved changes
@@ -647,19 +686,32 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
           )}
         </div>
 
-        <div className="flex items-center space-x-2">
+        {/* MOVED: All navigation and action buttons to top right */}
+        <div className="flex items-center space-x-1">
+          {/* Back Button */}
+          <button
+            onClick={onBack}
+            className="flex items-center space-x-0.5 px-1.5 py-0.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            <ArrowLeft size={10} />
+            <span>Back to Approaches</span>
+          </button>
+
+          {/* Cancel */}
           <button
             onClick={onBack}
             disabled={updateApproachMutation.isPending}
-            className="flex items-center space-x-1 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            className="flex items-center space-x-0.5 px-1.5 py-0.5 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
           >
-            <X size={14} />
+            <X size={10} />
             <span>Cancel</span>
           </button>
+
+          {/* Save Changes */}
           <button
             onClick={handleSave}
             disabled={!hasChanges || updateApproachMutation.isPending || !contentValidation.valid}
-            className={`flex items-center space-x-1 px-3 py-1.5 text-sm rounded transition-colors ${getSaveButtonStyle()}`}
+            className={`flex items-center space-x-0.5 px-1.5 py-0.5 text-xs rounded transition-colors ${getSaveButtonStyle()}`}
             title={
               !contentValidation.valid 
                 ? contentValidation.errors[0]
@@ -668,41 +720,13 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
                   : 'Save your changes'
             }
           >
-            <Save size={14} />
+            <Save size={10} />
             <span>
               {updateApproachMutation.isPending ? 'Saving...' : 'Save Changes'}
             </span>
           </button>
         </div>
       </div>
-
-      {/* Error/Warning banner with centralized validation */}
-      {!contentValidation.valid && (
-        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-          <div className="flex items-center space-x-2 text-sm text-red-800 dark:text-red-200">
-            <AlertCircle size={16} />
-            <span>{contentValidation.errors[0]}</span>
-          </div>
-        </div>
-      )}
-
-      {submissionStatus.type === 'warning' && contentValidation.valid && (
-        <div className="px-4 py-2 bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800">
-          <div className="flex items-center space-x-2 text-sm text-orange-800 dark:text-orange-200">
-            <AlertCircle size={16} />
-            <span>{submissionStatus.message}</span>
-          </div>
-        </div>
-      )}
-
-      {submissionStatus.type === 'error' && contentValidation.valid && (
-        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-          <div className="flex items-center space-x-2 text-sm text-red-800 dark:text-red-200">
-            <AlertCircle size={16} />
-            <span>{submissionStatus.message}</span>
-          </div>
-        </div>
-      )}
 
       {/* Main Content */}
       <div className="flex-1 flex min-h-0">
@@ -789,6 +813,16 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
               >
                 <Play size={10} />
                 <span>{codeExecutePending ? "Running..." : "Run"}</span>
+              </button>
+
+              {/* Reset Button */}
+              <button
+                onClick={handleReset}
+                disabled={codeExecutePending || updateApproachMutation.isPending}
+                className="flex items-center space-x-1 px-2 py-0.5 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <RotateCcw size={10} />
+                <span>Reset</span>
               </button>
             </div>
           </div>
@@ -916,7 +950,7 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
             )}
           </div>
 
-          {/* Bottom Action Bar for Code Editor */}
+          {/* UPDATED: Bottom Action Bar for Code Editor with corrected approach status */}
           <div className="px-3 py-1 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-1.5">
@@ -947,10 +981,25 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
                 )}
               </div>
 
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {ApproachLimitCalculator.formatSize(
-                  ApproachLimitCalculator.calculateContentSize("", code)
-                )}
+              {/* FIXED: Right side with corrected approach status and code size */}
+              <div className="flex items-center space-x-3 text-xs">
+                {/* FIXED: Display Status shows actual count including current approach */}
+                <div className={`flex items-center space-x-1 ${displayStatus.color}`}>
+                  {displayStatus.type === 'error' && (
+                    <AlertCircle size={12} />
+                  )}
+                  <span>{displayStatus.message}</span>
+                </div>
+                
+                {/* Code Size Separator */}
+                <div className="h-3 w-px bg-gray-300 dark:bg-gray-600"></div>
+                
+                {/* Code Size */}
+                <div className="text-gray-500 dark:text-gray-400">
+                  {ApproachLimitCalculator.formatSize(
+                    ApproachLimitCalculator.calculateContentSize("", code)
+                  )}
+                </div>
               </div>
             </div>
           </div>
