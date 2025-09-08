@@ -28,13 +28,16 @@ import {
 } from "@/lib/compiler/languages";
 import { LanguageSelector } from "./LanguageSelector";
 import { useCodeExecution } from "@/hooks/useCodeExecution";
-import { useCreateApproach, useApproachLimitsQuery } from "@/hooks/useApproachManagement";
-import { APPROACH_VALIDATION } from "@/constants";
+import { 
+  useCreateApproach, 
+  useSubmissionStatus,
+} from "@/hooks/useApproachManagement";
+import { ApproachLimitCalculator } from "@/lib/utils/approachLimits";
 import type { editor } from "monaco-editor";
 import { Question } from "@/types/admin";
 import { toast } from "react-hot-toast";
 
-// Monaco Editor Themes - FIXED: Complete theme definitions
+// Monaco Editor Themes (keeping existing themes)
 const MONACO_THEMES = [
   { name: "VS Code Light", value: "light", preview: "bg-white text-gray-900" },
   { name: "VS Code Dark", value: "vs-dark", preview: "bg-gray-800 text-white" },
@@ -45,7 +48,7 @@ const MONACO_THEMES = [
   { name: "Eclipse", value: "eclipse", preview: "bg-gray-100 text-gray-800" },
 ];
 
-// FIXED: Complete custom themes with all missing themes
+// Custom themes (keeping existing theme definitions)
 const customThemes = {
   monokai: {
     base: "vs-dark" as const,
@@ -220,7 +223,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
   // Input/Output panel states
   const [showInputPanel, setShowInputPanel] = useState(false);
   const [showOutputPanel, setShowOutputPanel] = useState(false);
-  const [inputOutputHeight, setInputOutputHeight] = useState(30); // Percentage of bottom area
+  const [inputOutputHeight, setInputOutputHeight] = useState(30); // Percentage
 
   // Refs for Monaco Editor management
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -231,21 +234,17 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
   const { mutate: executeCode, isPending, error } = useCodeExecution();
   const createApproachMutation = useCreateApproach();
 
-  // Check approach limits for current code
-  const { data: approachLimits } = useApproachLimitsQuery(
-    question.id,
-    code || "",
-    code || ""
-  );
+  // UPDATED: Use centralized hooks for approach validation and limits
+  const submissionStatus = useSubmissionStatus(question.id, code, code);
 
-  // Local storage keys for persistence - wrapped in useCallback to fix React Hook dependency issues
+  // Local storage keys for persistence
   const getStorageKey = useCallback(
     (language: string, type: "code" | "input") =>
       `question_${question.id}_${language}_${type}`,
     [question.id]
   );
 
-  // Get code snippet for current language if available - wrapped in useCallback
+  // Get code snippet for current language if available
   const getInitialCodeForLanguage = useCallback(
     (language: Language): string => {
       const snippet = question.codeSnippets?.find(
@@ -255,56 +254,6 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     },
     [question.codeSnippets]
   );
-
-  // FIXED: NEW - Approach submission status logic
-  const getApproachSubmissionStatus = useCallback(() => {
-    if (!approachLimits) {
-      return {
-        canSubmit: false,
-        message: 'Loading approach limits...',
-        type: 'loading' as const
-      };
-    }
-
-    // No approaches yet - show encouragement
-    if (approachLimits.currentCount === 0) {
-      const remainingKB = (approachLimits.remainingBytes / 1024).toFixed(1);
-      return {
-        canSubmit: true,
-        message: `Ready to submit! ${approachLimits.maxCount} approaches, ${remainingKB}KB available.`,
-        type: 'info' as const
-      };
-    }
-
-    // Check if we can add more approaches
-    if (!approachLimits.canAdd) {
-      if (!approachLimits.canAddCount) {
-        return {
-          canSubmit: false,
-          message: `Maximum ${approachLimits.maxCount} approaches reached for this question.`,
-          type: 'error' as const
-        };
-      }
-      if (!approachLimits.canAddSize) {
-        const remainingKB = (approachLimits.remainingBytes / 1024).toFixed(1);
-        return {
-          canSubmit: false,
-          message: `Only ${remainingKB}KB remaining. Current approach would exceed limit.`,
-          type: 'error' as const
-        };
-      }
-    }
-
-    // Can still add - show current usage
-    const remainingKB = (approachLimits.remainingBytes / 1024).toFixed(1);
-    const usedKB = ((approachLimits.maxAllowedSize - approachLimits.remainingBytes) / 1024).toFixed(1);
-    
-    return {
-      canSubmit: true,
-      message: `${approachLimits.currentCount}/${approachLimits.maxCount} approaches used. ${usedKB}KB/${(approachLimits.maxAllowedSize / 1024).toFixed(0)}KB used (${remainingKB}KB remaining)`,
-      type: 'info' as const
-    };
-  }, [approachLimits]);
 
   // Debounced resize function to prevent Monaco Editor errors
   const debouncedResizeEditor = useCallback(() => {
@@ -319,10 +268,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
             try {
               editorRef.current?.layout();
             } catch (error) {
-              console.warn(
-                "Monaco Editor layout error (safe to ignore):",
-                error
-              );
+              console.warn("Monaco Editor layout error (safe to ignore):", error);
             }
           });
         } catch (error) {
@@ -348,7 +294,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
 
       const handleMouseMove = (e: MouseEvent) => {
         e.preventDefault();
-        const deltaY = startY - e.clientY; // Inverted because we're expanding upward
+        const deltaY = startY - e.clientY;
         const deltaPercent = (deltaY / containerHeight) * 100;
         const newHeight = Math.min(
           Math.max(startHeight + deltaPercent, 15),
@@ -364,7 +310,6 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
         document.body.style.userSelect = "";
         document.body.style.cursor = "";
         
-        // Trigger editor resize after panel resize
         debouncedResizeEditor();
       };
 
@@ -452,27 +397,23 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     }, 0);
   };
 
-  // UPDATED: Submit approach handler with better validation
+  // UPDATED: Submit approach handler with centralized validation
   const handleSubmitApproach = () => {
-    // Validate code content
-    if (!code.trim() || code.trim() === selectedLanguage.defaultCode.trim()) {
-      toast.error("Please write some code before submitting your approach");
+    // Use centralized content validation
+    const validation = ApproachLimitCalculator.validateContent("", code);
+    
+    if (!validation.valid) {
+      toast.error(validation.errors[0]);
       return;
     }
 
-    // Check minimum length
-    if (code.trim().length < APPROACH_VALIDATION.TEXT_MIN_LENGTH) {
-      toast.error(`Code must be at least ${APPROACH_VALIDATION.TEXT_MIN_LENGTH} characters long`);
+    // Check submission status
+    if (!submissionStatus.canSubmit) {
+      toast.error(submissionStatus.message);
       return;
     }
 
-    const status = getApproachSubmissionStatus();
-    if (!status.canSubmit) {
-      toast.error(status.message);
-      return;
-    }
-
-    // Create approach with code as codeContent (not textContent)
+    // Create approach with code as codeContent
     createApproachMutation.mutate({
       questionId: question.id,
       data: {
@@ -484,11 +425,9 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
   };
 
   const handleRunCode = () => {
-    // Auto-expand output panel and hide input panel
     setShowOutputPanel(true);
     setShowInputPanel(false);
     
-    // Check if code requires input but none provided
     if (doesCodeRequireInput(code) && !input.trim()) {
       setOutput(
         `❌ Input Required!\n\nYour ${selectedLanguage.name} code appears to require input. Please provide input in the Input section.\n\nExample input format:\n- Each input on a new line\n- For numbers: 123\n- For text: Hello World`
@@ -621,7 +560,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     }
   };
 
-  // FIXED: Monaco Editor beforeMount with all custom themes
+  // Monaco Editor beforeMount with all custom themes
   const handleEditorWillMount = (monaco: typeof import("monaco-editor")) => {
     try {
       Object.entries(customThemes).forEach(([name, theme]) => {
@@ -653,30 +592,20 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     }
   }, [selectedLanguage, getStorageKey, getInitialCodeForLanguage]);
 
-  // UPDATED: Submit button logic
-  const canSubmitApproach = () => {
-    if (!code.trim() || code.trim() === selectedLanguage.defaultCode.trim()) {
-      return false;
-    }
-    if (code.trim().length < APPROACH_VALIDATION.TEXT_MIN_LENGTH) {
-      return false;
+  // UPDATED: Get status color for submission button
+  const getSubmissionButtonStyle = () => {
+    if (!submissionStatus.canSubmit || createApproachMutation.isPending) {
+      return "bg-gray-400 text-gray-200 cursor-not-allowed";
     }
     
-    const status = getApproachSubmissionStatus();
-    return status.canSubmit;
-  };
-
-  // UPDATED: Submit button tooltip
-  const getSubmitTooltip = () => {
-    if (!code.trim() || code.trim() === selectedLanguage.defaultCode.trim()) {
-      return "Please write some code to submit your approach";
+    switch (submissionStatus.type) {
+      case 'warning':
+        return "bg-orange-600 text-white hover:bg-orange-700";
+      case 'error':
+        return "bg-red-600 text-white hover:bg-red-700";
+      default:
+        return "bg-purple-600 text-white hover:bg-purple-700";
     }
-    if (code.trim().length < APPROACH_VALIDATION.TEXT_MIN_LENGTH) {
-      return `Code must be at least ${APPROACH_VALIDATION.TEXT_MIN_LENGTH} characters long`;
-    }
-    
-    const status = getApproachSubmissionStatus();
-    return status.message;
   };
 
   return (
@@ -753,17 +682,13 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
             )}
           </div>
 
-          {/* UPDATED: Submit Approach Button */}
+          {/* UPDATED: Submit Approach Button with centralized status */}
           <div className="relative group">
             <button
               onClick={handleSubmitApproach}
-              disabled={!canSubmitApproach() || createApproachMutation.isPending}
-              className={`flex items-center space-x-0.5 px-1.5 py-0.5 text-xs rounded transition-colors ${
-                canSubmitApproach() && !createApproachMutation.isPending
-                  ? "bg-purple-600 text-white hover:bg-purple-700"
-                  : "bg-gray-400 text-gray-200 cursor-not-allowed"
-              }`}
-              title={getSubmitTooltip()}
+              disabled={!submissionStatus.canSubmit || createApproachMutation.isPending}
+              className={`flex items-center space-x-0.5 px-1.5 py-0.5 text-xs rounded transition-colors ${getSubmissionButtonStyle()}`}
+              title={submissionStatus.message}
             >
               <Upload size={10} />
               <span>
@@ -771,12 +696,10 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
               </span>
             </button>
 
-            {/* UPDATED: Approach Status Indicator */}
-            {approachLimits && (
-              <div className="absolute top-full right-0 mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                {getApproachSubmissionStatus().message}
-              </div>
-            )}
+            {/* Status tooltip */}
+            <div className="absolute top-full right-0 mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              {submissionStatus.message}
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -800,24 +723,24 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
         </div>
       </div>
 
-      {/* UPDATED: Warning for approach limits */}
-      {(() => {
-        const status = getApproachSubmissionStatus();
-        
-        // Only show error states in the warning section
-        if (status.type !== 'error') {
-          return null;
-        }
-        
-        return (
-          <div className="px-2 py-1 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-            <div className="flex items-center space-x-1 text-xs text-red-800 dark:text-red-200">
-              <AlertCircle size={12} />
-              <span>{status.message}</span>
-            </div>
+      {/* UPDATED: Warning section with centralized status */}
+      {submissionStatus.type === 'error' && (
+        <div className="px-2 py-1 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+          <div className="flex items-center space-x-1 text-xs text-red-800 dark:text-red-200">
+            <AlertCircle size={12} />
+            <span>{submissionStatus.message}</span>
           </div>
-        );
-      })()}
+        </div>
+      )}
+
+      {submissionStatus.type === 'warning' && (
+        <div className="px-2 py-1 bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800">
+          <div className="flex items-center space-x-1 text-xs text-orange-800 dark:text-orange-200">
+            <AlertCircle size={12} />
+            <span>{submissionStatus.message}</span>
+          </div>
+        </div>
+      )}
 
       {/* Main Editor Area */}
       <div className="flex-1 flex flex-col min-h-0">
@@ -942,7 +865,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
         )}
       </div>
 
-      {/* Bottom Action Bar - Compact */}
+      {/* Bottom Action Bar */}
       <div className="px-3 py-1 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1.5">
@@ -978,6 +901,13 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
               Error: {error.message}
             </div>
           )}
+
+          {/* UPDATED: Size indicator using centralized calculator */}
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            {ApproachLimitCalculator.formatSize(
+              ApproachLimitCalculator.calculateContentSize("", code)
+            )}
+          </div>
         </div>
       </div>
 

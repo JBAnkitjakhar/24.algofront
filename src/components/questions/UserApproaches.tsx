@@ -1,4 +1,4 @@
-// src/components/questions/UserApproaches.tsx - FIXED WITH PROPER TYPESCRIPT IMPORTS
+// src/components/questions/UserApproaches.tsx  
 
 'use client';
 
@@ -15,12 +15,11 @@ import {
 import { 
   useApproachesByQuestion, 
   useDeleteApproach,
-  useQuestionSizeUsage,
 } from '@/hooks/useApproachManagement';
 import { ApproachEditor } from './ApproachEditor';
+import { ApproachLimitCalculator } from '@/lib/utils/approachLimits';
 import { APPROACH_VALIDATION } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
-// FIXED: Import ApproachDTO from the correct location
 import type { ApproachDTO } from '@/types/admin';
 
 interface UserApproachesProps {
@@ -47,7 +46,7 @@ function ApproachCard({
     }
   };
 
-  // FIXED: Truncate description logic
+  // Truncate description logic
   const descriptionLines = approach.textContent.split('\n');
   const shouldTruncateDescription = descriptionLines.length > 3 || approach.textContent.length > 200;
   const truncatedDescription = shouldTruncateDescription && !showFullDescription
@@ -148,11 +147,73 @@ function ApproachCard({
         </div>
       )}
 
-      {/* Metadata */}
+      {/* UPDATED: Metadata with centralized size calculation */}
       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-        <span>Size: {(approach.contentSize / 1024).toFixed(2)} KB</span>
+        <span>Size: {ApproachLimitCalculator.formatSize(approach.contentSize)}</span>
         <span>Language: {approach.codeLanguage}</span>
       </div>
+    </div>
+  );
+}
+
+// UPDATED: Usage stats component with centralized calculator
+function UsageStatsCard({ 
+  approaches 
+}: { 
+  approaches: ApproachDTO[] 
+}) {
+  // Calculate usage using centralized calculator
+  const sizeUsage = ApproachLimitCalculator.calculateSizeUsage(approaches);
+  const colors = ApproachLimitCalculator.getUsageColor(sizeUsage.usagePercentage);
+
+  return (
+    <div className={`rounded-lg p-4 ${colors.bg}`}>
+      <h4 className={`text-sm font-medium mb-3 ${colors.text}`}>
+        Approach Usage Stats
+      </h4>
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <span className="text-gray-600 dark:text-gray-400">Approaches:</span>
+          <span className="ml-2 font-medium">
+            {sizeUsage.approachCount}/{sizeUsage.maxApproaches}
+          </span>
+        </div>
+        <div>
+          <span className="text-gray-600 dark:text-gray-400">Size Used:</span>
+          <span className="ml-2 font-medium">
+            {sizeUsage.totalUsedKB.toFixed(1)}KB/{sizeUsage.maxAllowedKB.toFixed(0)}KB
+          </span>
+        </div>
+        <div className="col-span-2">
+          <div className="flex items-center space-x-2">
+            <span className="text-gray-600 dark:text-gray-400">Storage:</span>
+            <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div
+                className={`h-2 rounded-full transition-all duration-300 ${colors.bar}`}
+                style={{ width: `${Math.min(sizeUsage.usagePercentage, 100)}%` }}
+              ></div>
+            </div>
+            <span className={`text-xs font-medium ${colors.text}`}>
+              {sizeUsage.usagePercentage.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Additional info for warnings */}
+      {sizeUsage.usagePercentage > 80 && (
+        <div className="mt-3 text-xs">
+          <div className="flex items-center space-x-1">
+            <AlertCircle size={12} />
+            <span>
+              {sizeUsage.usagePercentage > 95 
+                ? `Only ${sizeUsage.remainingKB.toFixed(1)}KB remaining!`
+                : `${sizeUsage.remainingKB.toFixed(1)}KB remaining`
+              }
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -162,7 +223,6 @@ export function UserApproaches({ questionId, onEditApproach }: UserApproachesPro
   
   // API hooks
   const { data: approaches = [], isLoading, error } = useApproachesByQuestion(questionId);
-  const { data: sizeUsage } = useQuestionSizeUsage(questionId);
   const deleteApproachMutation = useDeleteApproach();
 
   // Handle edit approach
@@ -247,7 +307,7 @@ export function UserApproaches({ questionId, onEditApproach }: UserApproachesPro
         </p>
         <div className="text-sm text-gray-500 dark:text-gray-400">
           <p>You can submit up to {APPROACH_VALIDATION.MAX_APPROACHES_PER_QUESTION} approaches per question</p>
-          <p>Total size limit: {(APPROACH_VALIDATION.MAX_TOTAL_SIZE_PER_USER_PER_QUESTION / 1024).toFixed(0)}KB per question</p>
+          <p>Total size limit: {ApproachLimitCalculator.formatSize(APPROACH_VALIDATION.MAX_TOTAL_SIZE_PER_USER_PER_QUESTION)} per question</p>
         </div>
       </div>
     );
@@ -255,42 +315,8 @@ export function UserApproaches({ questionId, onEditApproach }: UserApproachesPro
 
   return (
     <div className="space-y-6">
-      {/* Usage Stats */}
-      {sizeUsage && (
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-            Approach Usage Stats
-          </h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Approaches:</span>
-              <span className="ml-2 font-medium">
-                {sizeUsage.approachCount}/{sizeUsage.maxApproaches}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Size Used:</span>
-              <span className="ml-2 font-medium">
-                {sizeUsage.totalUsedKB.toFixed(1)}KB/{sizeUsage.maxAllowedKB.toFixed(0)}KB
-              </span>
-            </div>
-            <div className="col-span-2">
-              <div className="flex items-center space-x-2">
-                <span className="text-gray-600 dark:text-gray-400">Storage:</span>
-                <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${Math.min(sizeUsage.usagePercentage, 100)}%` }}
-                  ></div>
-                </div>
-                <span className="text-xs font-medium">
-                  {sizeUsage.usagePercentage.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* UPDATED: Usage Stats using centralized calculator */}
+      <UsageStatsCard approaches={approaches} />
 
       {/* Approaches List */}
       <div className="space-y-4">

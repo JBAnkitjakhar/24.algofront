@@ -20,14 +20,19 @@ import {
 } from 'lucide-react';
 import { LanguageSelector } from '@/components/compiler/LanguageSelector';
 import { useCodeExecution } from '@/hooks/useCodeExecution';
-import { useUpdateApproach, useApproachLimitsQuery } from '@/hooks/useApproachManagement';
+import { 
+  useUpdateApproach, 
+  useSubmissionStatus,
+  useContentValidation 
+} from '@/hooks/useApproachManagement';
+import { ApproachLimitCalculator } from '@/lib/utils/approachLimits';
 import { APPROACH_VALIDATION } from '@/constants';
 import { getDefaultLanguage, Language, SUPPORTED_LANGUAGES } from '@/lib/compiler/languages';
 import type { editor } from "monaco-editor";
 import type { ApproachDTO, UpdateApproachRequest } from '@/types/admin';
 import { toast } from 'react-hot-toast';
 
-// Monaco Editor Themes - Same as QuestionCompilerLayout
+// Monaco Editor Themes
 const MONACO_THEMES = [
   { name: "VS Code Light", value: "light", preview: "bg-white text-gray-900" },
   { name: "VS Code Dark", value: "vs-dark", preview: "bg-gray-800 text-white" },
@@ -38,7 +43,7 @@ const MONACO_THEMES = [
   { name: "Eclipse", value: "eclipse", preview: "bg-gray-100 text-gray-800" },
 ];
 
-// Custom themes - Same as QuestionCompilerLayout
+// Custom themes
 const customThemes = {
   monokai: {
     base: "vs-dark" as const,
@@ -198,13 +203,12 @@ interface ApproachEditorProps {
 }
 
 export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
-  // FIXED: Better language detection with case-insensitive matching and fallback
+  // Language detection with fallback
   const getInitialLanguage = useCallback((): Language => {
     if (!approach.codeLanguage) {
       return getDefaultLanguage();
     }
     
-    // Normalize the saved language name
     const savedLanguage = approach.codeLanguage.toLowerCase().trim();
     
     // Try exact match first
@@ -242,16 +246,10 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
       }
     }
     
-    console.log('Language detection:', {
-      saved: approach.codeLanguage,
-      normalized: savedLanguage,
-      found: foundLanguage?.name || 'none',
-      fallback: foundLanguage ? 'no' : 'yes'
-    });
-    
     return foundLanguage || getDefaultLanguage();
   }, [approach.codeLanguage]);
 
+  // State
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(getInitialLanguage());
   const [code, setCode] = useState<string>(approach.codeContent || '');
   const [textContent, setTextContent] = useState<string>(approach.textContent || '');
@@ -263,13 +261,12 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   
   // Panel states  
-  const [leftPanelWidth, setLeftPanelWidth] = useState(60); // Left panel (compiler) takes 60%
+  const [leftPanelWidth, setLeftPanelWidth] = useState(60);
   const [showInputPanel, setShowInputPanel] = useState(false);
   const [showOutputPanel, setShowOutputPanel] = useState(false);
   const [inputOutputHeight, setInputOutputHeight] = useState(30);
 
   // Form validation
-  const [error, setError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Refs
@@ -281,15 +278,16 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
   const { mutate: executeCode, isPending: codeExecutePending } = useCodeExecution();
   const updateApproachMutation = useUpdateApproach();
   
-  // Check approach limits for validation
-  const { data: approachLimits } = useApproachLimitsQuery(
+  // Use centralized hooks for validation and limits
+  const submissionStatus = useSubmissionStatus(
     approach.questionId,
     textContent,
     code,
     approach.id // Exclude current approach from limit check
   );
+  const contentValidation = useContentValidation(textContent, code);
 
-  // FIXED: Track changes more accurately with proper dependencies
+  // Track changes
   useEffect(() => {
     const codeChanged = code !== (approach.codeContent || '');
     const textChanged = textContent !== (approach.textContent || '');
@@ -316,7 +314,7 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
     localStorage.setItem("approach_editor_editorTheme", editorTheme);
   }, [editorTheme]);
 
-  // Debounced resize function to prevent Monaco Editor errors
+  // Debounced resize function
   const debouncedResizeEditor = useCallback(() => {
     if (resizeTimeoutRef.current) {
       clearTimeout(resizeTimeoutRef.current);
@@ -368,7 +366,6 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
         document.body.style.cursor = "";
         isResizingRef.current = false;
         
-        // Trigger editor resize after panel resize
         debouncedResizeEditor();
       };
 
@@ -408,7 +405,6 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
         document.body.style.userSelect = "";
         document.body.style.cursor = "";
         
-        // Trigger editor resize after panel resize
         debouncedResizeEditor();
       };
 
@@ -420,34 +416,15 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
     [inputOutputHeight, debouncedResizeEditor]
   );
 
-  // Save approach
+  // Save approach with centralized validation
   const handleSave = () => {
-    setError(null);
-
-    // Validate text content
-    if (!textContent.trim()) {
-      setError('Description cannot be empty');
+    if (!contentValidation.valid) {
+      toast.error(contentValidation.errors[0]);
       return;
     }
 
-    if (textContent.trim().length < APPROACH_VALIDATION.TEXT_MIN_LENGTH) {
-      setError(`Description must be at least ${APPROACH_VALIDATION.TEXT_MIN_LENGTH} characters long`);
-      return;
-    }
-
-    if (textContent.length > APPROACH_VALIDATION.TEXT_MAX_LENGTH) {
-      setError(`Description must not exceed ${APPROACH_VALIDATION.TEXT_MAX_LENGTH} characters`);
-      return;
-    }
-
-    // Validate code content
-    if (!code.trim()) {
-      setError('Code content cannot be empty');
-      return;
-    }
-
-    if (code.length > APPROACH_VALIDATION.CODE_MAX_LENGTH) {
-      setError(`Code must not exceed ${APPROACH_VALIDATION.CODE_MAX_LENGTH} characters`);
+    if (!submissionStatus.canSubmit && submissionStatus.type === 'error') {
+      toast.error(submissionStatus.message);
       return;
     }
 
@@ -462,13 +439,13 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
       {
         onSuccess: () => {
           setHasChanges(false);
-          toast.success('Approach updated successfully!');
+          // toast.success('Approach updated successfully!');
         },
       }
     );
   };
 
-  // Function to check if code requires input
+  // Check if code requires input
   const doesCodeRequireInput = (codeString: string): boolean => {
     const inputPatterns = [
       /Scanner.*nextInt|Scanner.*nextLine|Scanner.*next\(\)|System\.in/i,
@@ -509,12 +486,10 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
 
           let result = response.data;
 
-          // Check if there's another data layer and unwrap it
           if (result.data && !result.run) {
             result = result.data;
           }
 
-          // Check if the backend indicates failure
           if (result.successful === false && result.errorMessage) {
             setOutput(`❌ Backend Error: ${result.errorMessage}`);
             return;
@@ -522,7 +497,6 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
 
           let outputText = "";
 
-          // Show compilation output if present
           if (result.compile) {
             if (result.compile.stderr) {
               outputText += `❌ Compilation Error:\n${result.compile.stderr}\n\n`;
@@ -536,12 +510,10 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
             }
           }
 
-          // Check if run exists and show runtime output
           if (result.run && typeof result.run === "object") {
             if (result.run.stderr) {
               outputText += `🚨 Runtime Error:\n${result.run.stderr}\n`;
 
-              // Add helpful hints for common errors
               if (result.run.stderr.includes("NoSuchElementException")) {
                 outputText += `\n💡 Hint: This error usually means your program expected more input than provided.\n`;
               } else if (result.run.stderr.includes("InputMismatchException")) {
@@ -590,7 +562,6 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
   // Language change handler
   const handleLanguageChange = (language: Language) => {
     setSelectedLanguage(language);
-    // Keep the existing code when changing language
   };
 
   // Monaco Editor handlers
@@ -636,6 +607,23 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasChanges]);
 
+  // Get save button style based on validation and limits
+  const getSaveButtonStyle = () => {
+    if (!hasChanges || updateApproachMutation.isPending || !contentValidation.valid) {
+      return "bg-gray-400 text-gray-200 cursor-not-allowed";
+    }
+    
+    if (!submissionStatus.canSubmit && submissionStatus.type === 'error') {
+      return "bg-red-600 text-white hover:bg-red-700";
+    }
+    
+    if (submissionStatus.type === 'warning') {
+      return "bg-orange-600 text-white hover:bg-orange-700";
+    }
+    
+    return "bg-blue-600 text-white hover:bg-blue-700";
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -670,8 +658,15 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
           </button>
           <button
             onClick={handleSave}
-            disabled={!hasChanges || updateApproachMutation.isPending || !textContent.trim() || !code.trim()}
-            className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={!hasChanges || updateApproachMutation.isPending || !contentValidation.valid}
+            className={`flex items-center space-x-1 px-3 py-1.5 text-sm rounded transition-colors ${getSaveButtonStyle()}`}
+            title={
+              !contentValidation.valid 
+                ? contentValidation.errors[0]
+                : !submissionStatus.canSubmit && submissionStatus.type === 'error'
+                  ? submissionStatus.message
+                  : 'Save your changes'
+            }
           >
             <Save size={14} />
             <span>
@@ -681,12 +676,30 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
         </div>
       </div>
 
-      {/* Error banner */}
-      {error && (
+      {/* Error/Warning banner with centralized validation */}
+      {!contentValidation.valid && (
         <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
           <div className="flex items-center space-x-2 text-sm text-red-800 dark:text-red-200">
             <AlertCircle size={16} />
-            <span>{error}</span>
+            <span>{contentValidation.errors[0]}</span>
+          </div>
+        </div>
+      )}
+
+      {submissionStatus.type === 'warning' && contentValidation.valid && (
+        <div className="px-4 py-2 bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800">
+          <div className="flex items-center space-x-2 text-sm text-orange-800 dark:text-orange-200">
+            <AlertCircle size={16} />
+            <span>{submissionStatus.message}</span>
+          </div>
+        </div>
+      )}
+
+      {submissionStatus.type === 'error' && contentValidation.valid && (
+        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+          <div className="flex items-center space-x-2 text-sm text-red-800 dark:text-red-200">
+            <AlertCircle size={16} />
+            <span>{submissionStatus.message}</span>
           </div>
         </div>
       )}
@@ -935,7 +948,9 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
               </div>
 
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                {code.length}/{APPROACH_VALIDATION.CODE_MAX_LENGTH} chars
+                {ApproachLimitCalculator.formatSize(
+                  ApproachLimitCalculator.calculateContentSize("", code)
+                )}
               </div>
             </div>
           </div>
@@ -974,35 +989,6 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
               disabled={updateApproachMutation.isPending}
             />
           </div>
-
-          {/* Validation Info */}
-          {approachLimits && (
-            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-              <div className="text-xs text-gray-600 dark:text-gray-400">
-                <div className="flex items-center justify-between mb-1">
-                  <span>Size after update:</span>
-                  <span className={approachLimits.canAddSize ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
-                    {(approachLimits.totalSizeAfterUpdate / 1024).toFixed(1)}KB / {(approachLimits.maxAllowedSize / 1024).toFixed(0)}KB
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                    <div
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        approachLimits.canAddSize ? "bg-blue-600" : "bg-red-600"
-                      }`}
-                      style={{ 
-                        width: `${Math.min((approachLimits.totalSizeAfterUpdate / approachLimits.maxAllowedSize) * 100, 100)}%` 
-                      }}
-                    ></div>
-                  </div>
-                  <span className="text-xs">
-                    {((approachLimits.totalSizeAfterUpdate / approachLimits.maxAllowedSize) * 100).toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
