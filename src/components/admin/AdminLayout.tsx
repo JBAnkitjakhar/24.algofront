@@ -1,10 +1,10 @@
-// src/components/admin/AdminLayout.tsx - Layout wrapper for admin pages
+// src/components/admin/AdminLayout.tsx  
+
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminSidebar from './AdminSidebar';
-import AdminHeader from './AdminHeader';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -22,9 +22,6 @@ export default function AdminLayout({ children, requireSuperAdmin = false }: Adm
         
         {/* Main content */}
         <div className="flex flex-col flex-1 overflow-hidden md:pl-64">
-          {/* Header */}
-          <AdminHeader />
-          
           {/* Content */}
           <main className="flex-1 relative overflow-y-auto focus:outline-none">
             {requireSuperAdmin && !isSuperAdmin() ? (

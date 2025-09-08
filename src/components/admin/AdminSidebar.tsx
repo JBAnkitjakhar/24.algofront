@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { 
   ChartBarIcon, 
@@ -19,6 +20,10 @@ import {
 import { cn } from '@/lib/utils';
 import { ADMIN_ROUTES, ROUTES } from '@/constants';
 import { Maximize, Minimize } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { roleUtils } from '@/lib/utils/auth';
+import { dateUtils } from '@/lib/utils/common';
+import { stringUtils } from '@/lib/utils/common';
 
 // Extended document interface for fullscreen APIs
 interface ExtendedDocument extends Document {
@@ -50,6 +55,7 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ isSuperAdmin }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -130,6 +136,8 @@ export default function AdminSidebar({ isSuperAdmin }: AdminSidebarProps) {
     ] : []),
   ];
 
+  if (!user) return null;
+
   return (
     <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
       <div className="flex flex-col flex-grow pt-5 bg-white border-r border-gray-200 overflow-y-auto">
@@ -138,7 +146,7 @@ export default function AdminSidebar({ isSuperAdmin }: AdminSidebarProps) {
           <Link href={ROUTES.HOME} className="flex items-center">
             <ShieldCheckIcon className="h-8 w-8 text-blue-600" />
             <span className="ml-2 text-xl font-bold text-gray-900">
-              Admin Page
+              AlgoArena
             </span>
           </Link>
           
@@ -185,8 +193,47 @@ export default function AdminSidebar({ isSuperAdmin }: AdminSidebarProps) {
           </nav>
         </div>
 
-        {/* User page Link */}
-        <div className="flex-shrink-0 px-2 py-4 border-t border-gray-200">
+        {/* User Profile Section */}
+        <div className="flex-shrink-0 border-t border-gray-200 py-4 px-4">
+          <div className="flex items-center space-x-3 mb-3">
+            {user.image ? (
+              <Image
+                src={user.image}
+                alt={user.name}
+                width={40}
+                height={40}
+                className="rounded-full flex-shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0">
+                {stringUtils.getInitials(user.name)}
+              </div>
+            )}
+            
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-gray-900 truncate">
+                {user.name}
+              </div>
+              <div className="text-sm text-gray-500">
+                {roleUtils.formatRole(user.role)}
+              </div>
+              <div className="text-xs text-gray-400">
+                Member since {dateUtils.formatDate(user.createdAt)}
+              </div>
+            </div>
+          </div>
+          
+          {/* Logout Button */}
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
+          >
+            Logout
+          </button>
+        </div>
+
+        {/* Back to Home Link */}
+        <div className="flex-shrink-0 px-2 pb-4">
           <Link
             href={ROUTES.ME}
             className="group flex items-center px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900 transition-colors"
