@@ -1,4 +1,4 @@
-// src/app/questions/[id]/page.tsx - COMPLETE CODE with User Approaches integration
+// src/app/questions/[id]/page.tsx - UPDATED to hide compiler when editing approach
 
 'use client';
 
@@ -10,6 +10,7 @@ import { QuestionCompilerLayout } from '@/components/compiler/QuestionCompilerLa
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
 import { SolutionViewer } from '@/components/questions/SolutionViewer';
 import { UserApproaches } from '@/components/questions/UserApproaches';
+import { ApproachEditor } from '@/components/questions/ApproachEditor';
 import { 
   BookOpen, 
   CheckCircle2, 
@@ -33,7 +34,7 @@ import { useVisualizerFilesBySolution } from '@/hooks/useSolutionManagement';
 import { useApproachesByQuestion } from '@/hooks/useApproachManagement';
 import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
-import type { Solution } from '@/types';
+import type { Solution, ApproachDTO } from '@/types';
 
 // Solution Card Component with visualizer indicator
 function SolutionCard({ solution, onClick }: { solution: Solution; onClick: () => void }) {
@@ -109,6 +110,7 @@ function QuestionDetailContent() {
   
   const [activeTab, setActiveTab] = useState<'description' | 'solutions' | 'submissions'>('description');
   const [selectedSolution, setSelectedSolution] = useState<Solution | null>(null);
+  const [editingApproach, setEditingApproach] = useState<ApproachDTO | null>(null);
   
   // Resizable panels state
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // Percentage
@@ -176,6 +178,15 @@ function QuestionDetailContent() {
     });
   };
 
+  // Handle approach editing
+  const handleEditApproach = (approach: ApproachDTO) => {
+    setEditingApproach(approach);
+  };
+
+  const handleCloseApproachEditor = () => {
+    setEditingApproach(null);
+  };
+
   // Load saved panel width
   useEffect(() => {
     const savedWidth = localStorage.getItem("question_panel_width");
@@ -233,6 +244,14 @@ function QuestionDetailContent() {
             <SolutionViewer 
               solution={selectedSolution} 
               onBack={() => setSelectedSolution(null)}
+            />
+          </div>
+        ) : editingApproach ? (
+          // FIXED: Show ApproachEditor in full screen, completely hiding the original layout
+          <div className="h-full">
+            <ApproachEditor
+              approach={editingApproach}
+              onBack={handleCloseApproachEditor}
             />
           </div>
         ) : (
@@ -457,10 +476,13 @@ function QuestionDetailContent() {
                     </div>
                   )}
 
-                  {/* NEW: My Approaches tab content */}
+                  {/* UPDATED: My Approaches tab content with edit handler */}
                   {activeTab === 'submissions' && (
                     <div className="p-4">
-                      <UserApproaches questionId={questionId} />
+                      <UserApproaches 
+                        questionId={questionId} 
+                        onEditApproach={handleEditApproach}
+                      />
                     </div>
                   )}
                 </div>

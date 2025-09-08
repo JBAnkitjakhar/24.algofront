@@ -1,4 +1,4 @@
-// src/components/compiler/QuestionCompilerLayout.tsx - COMPLETE UPDATED VERSION
+// src/components/compiler/QuestionCompilerLayout.tsx  
 
 "use client";
 

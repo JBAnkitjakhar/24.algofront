@@ -1,256 +1,31 @@
-// src/components/questions/UserApproaches.tsx  
+// src/components/questions/UserApproaches.tsx - FIXED WITH PROPER TYPESCRIPT IMPORTS
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   Code, 
   Edit, 
   Trash2, 
   FileText,
   AlertCircle,
-  XCircle,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
 import { 
   useApproachesByQuestion, 
-  useDeleteApproach, 
-  useUpdateApproach,
+  useDeleteApproach,
   useQuestionSizeUsage,
 } from '@/hooks/useApproachManagement';
+import { ApproachEditor } from './ApproachEditor';
 import { APPROACH_VALIDATION } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
-import type { ApproachDTO, UpdateApproachRequest } from '@/types';
+// FIXED: Import ApproachDTO from the correct location
+import type { ApproachDTO } from '@/types/admin';
 
 interface UserApproachesProps {
   questionId: string;
-}
-
-interface ApproachModalProps {
-  approach: ApproachDTO | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (data: UpdateApproachRequest) => void;
-  isLoading: boolean;
-}
-
-// Available programming languages for the selector
-const PROGRAMMING_LANGUAGES = [
-  { value: 'javascript', label: 'JavaScript' },
-  { value: 'python', label: 'Python' },
-  { value: 'java', label: 'Java' },
-  { value: 'cpp', label: 'C++' },
-  { value: 'c', label: 'C' },
-  { value: 'csharp', label: 'C#' },
-  { value: 'go', label: 'Go' },
-  { value: 'rust', label: 'Rust' },
-  { value: 'typescript', label: 'TypeScript' },
-  { value: 'php', label: 'PHP' },
-  { value: 'ruby', label: 'Ruby' },
-  { value: 'kotlin', label: 'Kotlin' },
-  { value: 'swift', label: 'Swift' },
-  { value: 'scala', label: 'Scala' },
-  { value: 'dart', label: 'Dart' },
-  { value: 'perl', label: 'Perl' },
-  { value: 'lua', label: 'Lua' },
-  { value: 'r', label: 'R' },
-  { value: 'sql', label: 'SQL' },
-];
-
-// ENHANCED Modal for editing approach with code editing capabilities
-function EditApproachModal({ approach, isOpen, onClose, onSave, isLoading }: ApproachModalProps) {
-  const [textContent, setTextContent] = useState(approach?.textContent || '');
-  const [codeContent, setCodeContent] = useState(approach?.codeContent || '');
-  const [codeLanguage, setCodeLanguage] = useState(approach?.codeLanguage || 'javascript');
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'description' | 'code'>('description');
-
-  // Reset form when approach changes
-  useEffect(() => {
-    setTextContent(approach?.textContent || '');
-    setCodeContent(approach?.codeContent || '');
-    setCodeLanguage(approach?.codeLanguage || 'javascript');
-    setError(null);
-    setActiveTab('description');
-  }, [approach]);
-
-  if (!isOpen || !approach) return null;
-
-  const handleSave = () => {
-    setError(null);
-
-    // Validate text content
-    if (!textContent.trim()) {
-      setError('Description cannot be empty');
-      return;
-    }
-
-    if (textContent.trim().length < APPROACH_VALIDATION.TEXT_MIN_LENGTH) {
-      setError(`Description must be at least ${APPROACH_VALIDATION.TEXT_MIN_LENGTH} characters long`);
-      return;
-    }
-
-    if (textContent.length > APPROACH_VALIDATION.TEXT_MAX_LENGTH) {
-      setError(`Description must not exceed ${APPROACH_VALIDATION.TEXT_MAX_LENGTH} characters`);
-      return;
-    }
-
-    // Validate code content
-    if (!codeContent.trim()) {
-      setError('Code content cannot be empty');
-      return;
-    }
-
-    if (codeContent.length > APPROACH_VALIDATION.CODE_MAX_LENGTH) {
-      setError(`Code must not exceed ${APPROACH_VALIDATION.CODE_MAX_LENGTH} characters`);
-      return;
-    }
-
-    onSave({
-      textContent: textContent.trim(),
-      codeContent: codeContent.trim(),
-      codeLanguage: codeLanguage.toLowerCase(),
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Edit Approach
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-            disabled={isLoading}
-          >
-            <XCircle size={20} />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => setActiveTab('description')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'description'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
-          >
-            Description
-          </button>
-          <button
-            onClick={() => setActiveTab('code')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'code'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
-          >
-            Code
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-auto p-4 space-y-4">
-          {activeTab === 'description' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Approach Description
-              </label>
-              <textarea
-                value={textContent}
-                onChange={(e) => setTextContent(e.target.value)}
-                placeholder="Describe your approach, algorithm, time/space complexity, etc..."
-                className="w-full h-40 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
-                disabled={isLoading}
-              />
-              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                <span>
-                  {textContent.length}/{APPROACH_VALIDATION.TEXT_MAX_LENGTH} characters
-                </span>
-                <span>
-                  Min: {APPROACH_VALIDATION.TEXT_MIN_LENGTH} characters
-                </span>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'code' && (
-            <div className="space-y-4">
-              {/* Language Selector */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Programming Language
-                </label>
-                <select
-                  value={codeLanguage}
-                  onChange={(e) => setCodeLanguage(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  disabled={isLoading}
-                >
-                  {PROGRAMMING_LANGUAGES.map((lang) => (
-                    <option key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Code Editor */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Code Content
-                </label>
-                <textarea
-                  value={codeContent}
-                  onChange={(e) => setCodeContent(e.target.value)}
-                  placeholder="Enter your code solution here..."
-                  className="w-full h-80 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white font-mono text-sm resize-none"
-                  disabled={isLoading}
-                />
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  <span>
-                    {codeContent.length}/{APPROACH_VALIDATION.CODE_MAX_LENGTH} characters
-                  </span>
-                  <span>
-                    Language: {PROGRAMMING_LANGUAGES.find(l => l.value === codeLanguage)?.label}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="flex items-center space-x-2 text-red-600 dark:text-red-400 text-sm">
-              <AlertCircle size={16} />
-              <span>{error}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-            disabled={isLoading}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isLoading || !textContent.trim() || !codeContent.trim()}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  onEditApproach?: (approach: ApproachDTO) => void;
 }
 
 // Individual approach card component with truncation
@@ -382,38 +157,44 @@ function ApproachCard({
   );
 }
 
-export function UserApproaches({ questionId }: UserApproachesProps) {
+export function UserApproaches({ questionId, onEditApproach }: UserApproachesProps) {
   const [editingApproach, setEditingApproach] = useState<ApproachDTO | null>(null);
   
   // API hooks
   const { data: approaches = [], isLoading, error } = useApproachesByQuestion(questionId);
   const { data: sizeUsage } = useQuestionSizeUsage(questionId);
   const deleteApproachMutation = useDeleteApproach();
-  const updateApproachMutation = useUpdateApproach();
 
   // Handle edit approach
   const handleEditApproach = (approach: ApproachDTO) => {
-    setEditingApproach(approach);
+    if (onEditApproach) {
+      // Use the parent's edit handler (for full-screen mode)
+      onEditApproach(approach);
+    } else {
+      // Fallback to local state (for standalone mode)
+      setEditingApproach(approach);
+    }
   };
 
-  // Handle save approach
-  const handleSaveApproach = (data: UpdateApproachRequest) => {
-    if (!editingApproach) return;
-
-    updateApproachMutation.mutate(
-      { id: editingApproach.id, data },
-      {
-        onSuccess: () => {
-          setEditingApproach(null);
-        },
-      }
-    );
+  // Handle close editor (only used in standalone mode)
+  const handleCloseEditor = () => {
+    setEditingApproach(null);
   };
 
   // Handle delete approach
   const handleDeleteApproach = (id: string) => {
     deleteApproachMutation.mutate({ id, questionId });
   };
+
+  // Show full screen editor if editing in standalone mode
+  if (editingApproach && !onEditApproach) {
+    return (
+      <ApproachEditor
+        approach={editingApproach}
+        onBack={handleCloseEditor}
+      />
+    );
+  }
 
   // Loading state
   if (isLoading) {
@@ -526,15 +307,6 @@ export function UserApproaches({ questionId }: UserApproachesProps) {
           />
         ))}
       </div>
-
-      {/* Edit Approach Modal */}
-      <EditApproachModal
-        approach={editingApproach}
-        isOpen={!!editingApproach}
-        onClose={() => setEditingApproach(null)}
-        onSave={handleSaveApproach}
-        isLoading={updateApproachMutation.isPending}
-      />
     </div>
   );
 }

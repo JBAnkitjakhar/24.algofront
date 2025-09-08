@@ -1,4 +1,4 @@
-// src/hooks/useApproachManagement.ts - FINAL CORRECTED VERSION
+// src/hooks/useApproachManagement.ts  
 
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
