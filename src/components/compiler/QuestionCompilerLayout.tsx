@@ -25,12 +25,14 @@ import {
 import {
   Language,
   getDefaultLanguage,
+  SUPPORTED_LANGUAGES,
 } from "@/lib/compiler/languages";
 import { LanguageSelector } from "./LanguageSelector";
 import { useCodeExecution } from "@/hooks/useCodeExecution";
 import { 
   useCreateApproach, 
   useSubmissionStatus,
+  useApproachesByQuestion,
 } from "@/hooks/useApproachManagement";
 import { ApproachLimitCalculator } from "@/lib/utils/approachLimits";
 import type { editor } from "monaco-editor";
@@ -209,10 +211,11 @@ interface QuestionCompilerLayoutProps {
 export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
   question,
 }) => {
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>(
-    getDefaultLanguage()
-  );
-  const [code, setCode] = useState<string>(getDefaultLanguage().defaultCode);
+  // ADDED: Fetch user's approaches for this question
+  const { data: userApproaches = [] } = useApproachesByQuestion(question.id);
+
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>(getDefaultLanguage());
+  const [code, setCode] = useState<string>(""); // Will be set by priority logic
   const [input, setInput] = useState<string>("");
   const [output, setOutput] = useState<string>("");
   const [isOutputCopied, setIsOutputCopied] = useState(false);
@@ -234,7 +237,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
   const { mutate: executeCode, isPending, error } = useCodeExecution();
   const createApproachMutation = useCreateApproach();
 
-  // UPDATED: Use centralized hooks for approach validation and limits
+  // Use centralized hooks for approach validation and limits
   const submissionStatus = useSubmissionStatus(question.id, code, code);
 
   // Local storage keys for persistence
@@ -244,16 +247,122 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     [question.id]
   );
 
-  // Get code snippet for current language if available
+  // UPDATED: Priority-based code loading logic
   const getInitialCodeForLanguage = useCallback(
     (language: Language): string => {
-      const snippet = question.codeSnippets?.find(
-        (snippet) => snippet.language.toLowerCase() === language.name.toLowerCase()
-      );
-      return snippet?.code || language.defaultCode;
+      // Priority 1: Latest user approach code for this language
+      if (userApproaches.length > 0) {
+        // Find the latest approach with matching language (case insensitive)
+        const latestApproachWithLanguage = userApproaches
+          .filter(approach => 
+            approach.codeLanguage && 
+            approach.codeLanguage.toLowerCase() === language.name.toLowerCase()
+          )
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+
+        if (latestApproachWithLanguage && latestApproachWithLanguage.codeContent) {
+          // console.log(`Loading latest approach code for ${language.name}:`, latestApproachWithLanguage.codeContent.substring(0, 100));
+          return latestApproachWithLanguage.codeContent;
+        }
+
+        // If no exact language match, get the overall latest approach code
+        const latestApproach = userApproaches
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+
+        if (latestApproach && latestApproach.codeContent) {
+          // console.log(`Loading latest approach code (any language) for ${language.name}:`, latestApproach.codeContent.substring(0, 100));
+          return latestApproach.codeContent;
+        }
+      }
+
+      // Priority 2: Admin-provided starter code from question.codeSnippets
+      if (question.codeSnippets && question.codeSnippets.length > 0) {
+        const snippet = question.codeSnippets.find(
+          (snippet) => snippet.language.toLowerCase() === language.name.toLowerCase()
+        );
+        
+        if (snippet && snippet.code) {
+          // console.log(`Loading admin starter code for ${language.name}:`, snippet.code.substring(0, 100));
+          return snippet.code;
+        }
+      }
+
+      // Priority 3: Default language code (fallback)
+      // console.log(`Loading default code for ${language.name}:`, language.defaultCode);
+      return language.defaultCode;
     },
-    [question.codeSnippets]
+    [question.codeSnippets, userApproaches]
   );
+
+  // UPDATED: Language detection with priority-based selection
+  const getInitialLanguage = useCallback((): Language => {
+    // Priority 1: Latest user approach language
+    if (userApproaches.length > 0) {
+      const latestApproach = userApproaches
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+
+      if (latestApproach.codeLanguage) {
+        const savedLanguage = latestApproach.codeLanguage.toLowerCase().trim();
+        
+        // Try exact match first
+        let foundLanguage = SUPPORTED_LANGUAGES.find(lang => 
+          lang.name.toLowerCase() === savedLanguage
+        );
+        
+        // Try partial matches for common variations
+        if (!foundLanguage) {
+          foundLanguage = SUPPORTED_LANGUAGES.find(lang => {
+            const langName = lang.name.toLowerCase();
+            return langName.includes(savedLanguage) || savedLanguage.includes(langName);
+          });
+        }
+        
+        // Special cases for common language variations
+        if (!foundLanguage) {
+          const languageMap: Record<string, string> = {
+            'js': 'JavaScript',
+            'ts': 'TypeScript', 
+            'py': 'Python',
+            'cpp': 'C++',
+            'c++': 'C++',
+            'csharp': 'C#',
+            'cs': 'C#',
+            'go': 'Go',
+            'golang': 'Go',
+            'rs': 'Rust',
+            'java': 'Java'
+          };
+          
+          const mappedName = languageMap[savedLanguage];
+          if (mappedName) {
+            foundLanguage = SUPPORTED_LANGUAGES.find(lang => lang.name === mappedName);
+          }
+        }
+
+        if (foundLanguage) {
+          // console.log(`Selected language from latest approach: ${foundLanguage.name}`);
+          return foundLanguage;
+        }
+      }
+    }
+
+    // Priority 2: First admin-provided starter code language
+    if (question.codeSnippets && question.codeSnippets.length > 0) {
+      const firstSnippet = question.codeSnippets[0];
+      const foundLanguage = SUPPORTED_LANGUAGES.find(lang => 
+        lang.name.toLowerCase() === firstSnippet.language.toLowerCase()
+      );
+      
+      if (foundLanguage) {
+        // console.log(`Selected language from admin starter code: ${foundLanguage.name}`);
+        return foundLanguage;
+      }
+    }
+
+    // Priority 3: Default language (Python)
+    // console.log(`Selected default language: ${getDefaultLanguage().name}`);
+    return getDefaultLanguage();
+  }, [question.codeSnippets, userApproaches]);
 
   // Debounced resize function to prevent Monaco Editor errors
   const debouncedResizeEditor = useCallback(() => {
@@ -356,6 +465,15 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     }
   }, [input, selectedLanguage.name, question.id, getStorageKey]);
 
+  // UPDATED: Initialize language and code based on priority logic
+  useEffect(() => {
+    const initialLanguage = getInitialLanguage();
+    const initialCode = getInitialCodeForLanguage(initialLanguage);
+    
+    setSelectedLanguage(initialLanguage);
+    setCode(initialCode);
+  }, [getInitialLanguage, getInitialCodeForLanguage]);
+
   // Function to check if code requires input
   const doesCodeRequireInput = (codeString: string): boolean => {
     const inputPatterns = [
@@ -367,7 +485,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     return inputPatterns.some((pattern) => pattern.test(codeString));
   };
 
-  // Language change handler
+  // UPDATED: Language change handler
   const handleLanguageChange = (language: Language) => {
     // Save current code and input before switching
     if (code !== selectedLanguage.defaultCode) {
@@ -380,24 +498,26 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
       );
     }
 
-    // Load saved code/input for new language
-    const savedCode = localStorage.getItem(
-      getStorageKey(language.name, "code")
-    );
-    const savedInput = localStorage.getItem(
-      getStorageKey(language.name, "input")
-    );
+    // Load saved code/input for new language or use priority logic
+    const savedCode = localStorage.getItem(getStorageKey(language.name, "code"));
+    const savedInput = localStorage.getItem(getStorageKey(language.name, "input"));
 
     setSelectedLanguage(language);
 
     setTimeout(() => {
-      setCode(savedCode || language.defaultCode);
+      if (savedCode) {
+        setCode(savedCode);
+      } else {
+        // Use priority logic for new language
+        const initialCode = getInitialCodeForLanguage(language);
+        setCode(initialCode);
+      }
       setInput(savedInput || "");
       setOutput("");
     }, 0);
   };
 
-  // UPDATED: Submit approach handler with centralized validation
+  // Submit approach handler with centralized validation
   const handleSubmitApproach = () => {
     // Use centralized content validation
     const validation = ApproachLimitCalculator.validateContent("", code);
@@ -516,7 +636,9 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
   };
 
   const handleReset = () => {
-    setCode(selectedLanguage.defaultCode);
+    // Reset to priority-based initial code, not just default
+    const initialCode = getInitialCodeForLanguage(selectedLanguage);
+    setCode(initialCode);
     setInput("");
     setOutput("");
     setShowInputPanel(false);
@@ -578,21 +700,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     }
   };
 
-  // Update code when language changes to use question's code snippet
-  useEffect(() => {
-    const savedCode = localStorage.getItem(
-      getStorageKey(selectedLanguage.name, "code")
-    );
-    
-    if (savedCode) {
-      setCode(savedCode);
-    } else {
-      const initialCode = getInitialCodeForLanguage(selectedLanguage);
-      setCode(initialCode);
-    }
-  }, [selectedLanguage, getStorageKey, getInitialCodeForLanguage]);
-
-  // UPDATED: Get status color for submission button
+  // Get status color for submission button
   const getSubmissionButtonStyle = () => {
     if (!submissionStatus.canSubmit || createApproachMutation.isPending) {
       return "bg-gray-400 text-gray-200 cursor-not-allowed";
@@ -608,7 +716,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
     }
   };
 
-  // ADDED: Get status text color for bottom status display
+  // Get status text color for bottom status display
   const getStatusTextColor = () => {
     switch (submissionStatus.type) {
       case 'error':
@@ -622,7 +730,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* UPDATED HEADER - Removed warning/error sections */}
+      {/* Header */}
       <div className="flex items-center justify-between px-2 py-1 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-1.5">
           <h2 className="text-xs font-medium text-gray-900 dark:text-white">
@@ -694,7 +802,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
             )}
           </div>
 
-          {/* UPDATED: Submit Approach Button with centralized status */}
+          {/* Submit Approach Button */}
           <div className="relative group">
             <button
               onClick={handleSubmitApproach}
@@ -858,7 +966,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
         )}
       </div>
 
-      {/* UPDATED: Bottom Action Bar with approach status moved here */}
+      {/* Bottom Action Bar */}
       <div className="px-3 py-1 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1.5">
@@ -896,7 +1004,7 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
             </div>
           )}
 
-          {/* UPDATED: Right side with approach status and code size */}
+          {/* Right side with approach status and code size */}
           <div className="flex items-center space-x-3 text-xs">
             {/* Approach Status */}
             <div className={`flex items-center space-x-1 ${getStatusTextColor()}`}>

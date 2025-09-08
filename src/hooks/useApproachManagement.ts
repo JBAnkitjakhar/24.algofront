@@ -1,4 +1,4 @@
-// src/hooks/useApproachManagement.ts - UPDATED with centralized limit calculator
+// src/hooks/useApproachManagement.ts  
 
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

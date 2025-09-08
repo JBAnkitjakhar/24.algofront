@@ -16,7 +16,9 @@ import {
   LogOut,
   User,
   Menu,
-  X
+  X,
+  Maximize,
+  Minimize
 } from 'lucide-react';
 import { roleUtils } from '@/lib/utils/auth';
 import { stringUtils } from '@/lib/utils/common';
@@ -31,6 +33,23 @@ interface SidebarItem {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   href: string;
   description: string;
+}
+
+// Extended document interface for fullscreen APIs
+interface ExtendedDocument extends Document {
+  webkitFullscreenElement?: Element;
+  mozFullScreenElement?: Element;
+  msFullscreenElement?: Element;
+  webkitExitFullscreen?: () => Promise<void>;
+  mozCancelFullScreen?: () => Promise<void>;
+  msExitFullscreen?: () => Promise<void>;
+}
+
+// Extended HTMLElement interface for fullscreen APIs
+interface ExtendedHTMLElement extends HTMLElement {
+  webkitRequestFullscreen?: () => Promise<void>;
+  mozRequestFullScreen?: () => Promise<void>;
+  msRequestFullscreen?: () => Promise<void>;
 }
 
 const sidebarItems: SidebarItem[] = [
@@ -73,6 +92,9 @@ export default function UserLayout({ children }: UserLayoutProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Check for mobile screen
   useEffect(() => {
@@ -92,6 +114,70 @@ export default function UserLayout({ children }: UserLayoutProps) {
     
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Fullscreen detection and management
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const doc = document as ExtendedDocument;
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
+
+    // Listen for fullscreen changes
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    // Check initial fullscreen state
+    handleFullscreenChange();
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Fullscreen toggle function
+  const toggleFullscreen = async () => {
+    try {
+      if (!isFullscreen) {
+        // Enter fullscreen
+        const docEl = document.documentElement as ExtendedHTMLElement;
+        
+        if (docEl.requestFullscreen) {
+          await docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) {
+          await docEl.webkitRequestFullscreen();
+        } else if (docEl.mozRequestFullScreen) {
+          await docEl.mozRequestFullScreen();
+        } else if (docEl.msRequestFullscreen) {
+          await docEl.msRequestFullscreen();
+        }
+      } else {
+        // Exit fullscreen
+        const doc = document as ExtendedDocument;
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
+        } else if (doc.mozCancelFullScreen) {
+          await doc.mozCancelFullScreen();
+        } else if (doc.msExitFullscreen) {
+          await doc.msExitFullscreen();
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling fullscreen:', error);
+    }
+  };
 
   // Load saved sidebar state (only once on initial load)
   useEffect(() => {
@@ -176,7 +262,7 @@ export default function UserLayout({ children }: UserLayoutProps) {
         bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-lg
       `}>
         {/* Sidebar Header */}
-        <div className={`flex items-center ${isCollapsed && !isMobile ? 'justify-center px-1' : 'justify-between px-4'} py-4 border-b border-gray-200 dark:border-gray-700`}>
+        <div className={`${isCollapsed && !isMobile ? 'flex flex-col items-center space-y-2 px-1' : 'flex items-center justify-between px-4'} py-4 border-b border-gray-200 dark:border-gray-700`}>
           {(!isCollapsed || isMobile) && (
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -188,19 +274,37 @@ export default function UserLayout({ children }: UserLayoutProps) {
             </div>
           )}
           
-          <button
-            onClick={toggleSidebar}
-            className={`p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${
-              isCollapsed && !isMobile ? 'w-full flex justify-center' : ''
-            }`}
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isMobile ? (
-              isMobileOpen ? <X size={18} /> : <Menu size={18} />
-            ) : (
-              isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />
-            )}
-          </button>
+          <div className={`${isCollapsed && !isMobile ? 'flex flex-col space-y-1 w-full' : 'flex items-center space-x-1'}`}>
+            {/* Fullscreen Toggle Button */}
+            <button
+              onClick={toggleFullscreen}
+              className={`p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${
+                isCollapsed && !isMobile ? 'w-full flex justify-center' : ''
+              }`}
+              title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            >
+              {isFullscreen ? (
+                <Minimize size={16} className="text-gray-600 dark:text-gray-400" />
+              ) : (
+                <Maximize size={16} className="text-gray-600 dark:text-gray-400" />
+              )}
+            </button>
+
+            {/* Sidebar Toggle Button */}
+            <button
+              onClick={toggleSidebar}
+              className={`p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${
+                isCollapsed && !isMobile ? 'w-full flex justify-center' : ''
+              }`}
+              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {isMobile ? (
+                isMobileOpen ? <X size={16} /> : <Menu size={16} />
+              ) : (
+                isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Navigation */}

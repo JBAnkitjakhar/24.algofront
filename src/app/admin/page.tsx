@@ -1,4 +1,5 @@
-// src/app/admin/page.tsx - Main Admin Home Page
+// src/app/admin/page.tsx  
+
 'use client';
 
 import { 
