@@ -35,6 +35,7 @@ import {
   useApproachesByQuestion,
 } from "@/hooks/useApproachManagement";
 import { ApproachLimitCalculator } from "@/lib/utils/approachLimits";
+import { APPROACH_VALIDATION } from "@/constants"; // Import validation constants
 import type { editor } from "monaco-editor";
 import { Question } from "@/types/admin";
 import { toast } from "react-hot-toast";
@@ -238,7 +239,22 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
   const createApproachMutation = useCreateApproach();
 
   // Use centralized hooks for approach validation and limits
-  const submissionStatus = useSubmissionStatus(question.id, code, code);
+  const submissionStatus = useSubmissionStatus(question.id, "", code);
+
+  // ADDED: Character count validation functions
+  const getCodeCharacterStatus = () => {
+    const currentLength = code.length;
+    const maxLength = APPROACH_VALIDATION.CODE_MAX_LENGTH;
+    const isOverLimit = currentLength > maxLength;
+    
+    return {
+      currentLength,
+      maxLength,
+      isOverLimit,
+      displayText: `${currentLength}/${(maxLength / 1000).toFixed(0)}K characters`,
+      color: isOverLimit ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+    };
+  };
 
   // Local storage keys for persistence
   const getStorageKey = useCallback(
@@ -261,7 +277,6 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
 
         if (latestApproachWithLanguage && latestApproachWithLanguage.codeContent) {
-          // console.log(`Loading latest approach code for ${language.name}:`, latestApproachWithLanguage.codeContent.substring(0, 100));
           return latestApproachWithLanguage.codeContent;
         }
 
@@ -270,7 +285,6 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
 
         if (latestApproach && latestApproach.codeContent) {
-          // console.log(`Loading latest approach code (any language) for ${language.name}:`, latestApproach.codeContent.substring(0, 100));
           return latestApproach.codeContent;
         }
       }
@@ -282,13 +296,11 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
         );
         
         if (snippet && snippet.code) {
-          // console.log(`Loading admin starter code for ${language.name}:`, snippet.code.substring(0, 100));
           return snippet.code;
         }
       }
 
       // Priority 3: Default language code (fallback)
-      // console.log(`Loading default code for ${language.name}:`, language.defaultCode);
       return language.defaultCode;
     },
     [question.codeSnippets, userApproaches]
@@ -340,7 +352,6 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
         }
 
         if (foundLanguage) {
-          // console.log(`Selected language from latest approach: ${foundLanguage.name}`);
           return foundLanguage;
         }
       }
@@ -354,13 +365,11 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
       );
       
       if (foundLanguage) {
-        // console.log(`Selected language from admin starter code: ${foundLanguage.name}`);
         return foundLanguage;
       }
     }
 
     // Priority 3: Default language (Python)
-    // console.log(`Selected default language: ${getDefaultLanguage().name}`);
     return getDefaultLanguage();
   }, [question.codeSnippets, userApproaches]);
 
@@ -519,6 +528,13 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
 
   // Submit approach handler with centralized validation
   const handleSubmitApproach = () => {
+    // ADDED: Check code character limit before submission
+    const codeStatus = getCodeCharacterStatus();
+    if (codeStatus.isOverLimit) {
+      toast.error(`Code must not exceed ${(codeStatus.maxLength / 1000).toFixed(0)}K characters. Currently: ${codeStatus.currentLength} characters.`);
+      return;
+    }
+
     // Use centralized content validation
     const validation = ApproachLimitCalculator.validateContent("", code);
     
@@ -702,7 +718,9 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
 
   // Get status color for submission button
   const getSubmissionButtonStyle = () => {
-    if (!submissionStatus.canSubmit || createApproachMutation.isPending) {
+    const codeStatus = getCodeCharacterStatus();
+    
+    if (!submissionStatus.canSubmit || createApproachMutation.isPending || codeStatus.isOverLimit) {
       return "bg-gray-400 text-gray-200 cursor-not-allowed";
     }
     
@@ -806,9 +824,13 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
           <div className="relative group">
             <button
               onClick={handleSubmitApproach}
-              disabled={!submissionStatus.canSubmit || createApproachMutation.isPending}
+              disabled={!submissionStatus.canSubmit || createApproachMutation.isPending || getCodeCharacterStatus().isOverLimit}
               className={`flex items-center space-x-0.5 px-1.5 py-0.5 text-xs rounded transition-colors ${getSubmissionButtonStyle()}`}
-              title={submissionStatus.message}
+              title={
+                getCodeCharacterStatus().isOverLimit 
+                  ? `Code exceeds ${(getCodeCharacterStatus().maxLength / 1000).toFixed(0)}K character limit`
+                  : submissionStatus.message
+              }
             >
               <Upload size={10} />
               <span>
@@ -818,7 +840,9 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
 
             {/* Status tooltip */}
             <div className="absolute top-full right-0 mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-              {submissionStatus.message}
+              {getCodeCharacterStatus().isOverLimit 
+                ? `Code exceeds ${(getCodeCharacterStatus().maxLength / 1000).toFixed(0)}K character limit`
+                : submissionStatus.message}
             </div>
           </div>
 
@@ -1017,11 +1041,9 @@ export const QuestionCompilerLayout: React.FC<QuestionCompilerLayoutProps> = ({
             {/* Code Size Separator */}
             <div className="h-3 w-px bg-gray-300 dark:bg-gray-600"></div>
             
-            {/* Code Size */}
-            <div className="text-gray-500 dark:text-gray-400">
-              {ApproachLimitCalculator.formatSize(
-                ApproachLimitCalculator.calculateContentSize("", code)
-              )}
+            {/* UPDATED: Live Code Character Count */}
+            <div className={`${getCodeCharacterStatus().color}`}>
+              {getCodeCharacterStatus().displayText}
             </div>
           </div>
         </div>

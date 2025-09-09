@@ -416,31 +416,6 @@ export const CompilerLayout: React.FC = () => {
     localStorage.setItem("compiler_inputHeight", inputPanelHeight.toString());
   }, [inputPanelHeight]);
 
-  // FIXED: Load saved code and input from localStorage
-  // useEffect(() => {
-  //   const savedCode = localStorage.getItem(
-  //     getStorageKey(selectedLanguage.name, "code")
-  //   );
-  //   const savedInput = localStorage.getItem(
-  //     getStorageKey(selectedLanguage.name, "input")
-  //   );
-
-  //   if (savedCode) {
-  //     setCode(savedCode);
-  //   } else {
-  //     setCode(selectedLanguage.defaultCode);
-  //   }
-
-  //   if (savedInput) {
-  //     setInput(savedInput);
-  //   } else {
-  //     setInput("");
-  //   }
-
-  //   // Clear output when language changes
-  //   setOutput("");
-  // }, [selectedLanguage]); // FIXED: Depend on entire selectedLanguage object, not just name
-
   // Save code to localStorage when it changes (only if different from default)
   useEffect(() => {
     if (code && code !== selectedLanguage.defaultCode) {

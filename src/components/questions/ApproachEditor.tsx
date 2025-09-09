@@ -25,7 +25,7 @@ import {
   useUpdateApproach, 
   useSubmissionStatus,
   useContentValidation,
-  useApproachesByQuestion, // Add this import for actual count
+  useApproachesByQuestion,
 } from '@/hooks/useApproachManagement';
 import { ApproachLimitCalculator } from '@/lib/utils/approachLimits';
 import { APPROACH_VALIDATION } from '@/constants';
@@ -280,20 +280,48 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
   const { mutate: executeCode, isPending: codeExecutePending } = useCodeExecution();
   const updateApproachMutation = useUpdateApproach();
   
-  // FIXED: Use separate hooks for validation vs display
-  // 1. For validation - exclude current approach to check if content fits
+  // For validation - exclude current approach to check if content fits
   const submissionStatus = useSubmissionStatus(
     approach.questionId,
     textContent,
     code,
-    approach.id // This properly excludes current approach from validation
+    approach.id
   );
   
-  // 2. For display - get actual count including current approach
+  // For display - get actual count including current approach
   const { data: allApproaches = [] } = useApproachesByQuestion(approach.questionId);
-  const actualApproachCount = allApproaches.length; // This includes the current approach
+  const actualApproachCount = allApproaches.length;
   
   const contentValidation = useContentValidation(textContent, code);
+
+  // ADDED: Character count validation functions
+  const getTextCharacterStatus = () => {
+    const currentLength = textContent.length;
+    const maxLength = APPROACH_VALIDATION.TEXT_MAX_LENGTH;
+    const isOverLimit = currentLength > maxLength;
+    
+    return {
+      currentLength,
+      maxLength,
+      isOverLimit,
+      displayText: `${currentLength}/${(maxLength / 1000).toFixed(0)}K characters`,
+      color: isOverLimit ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+    };
+  };
+
+  const getCodeCharacterStatus = () => {
+    const currentLength = code.length;
+    const maxLength = APPROACH_VALIDATION.CODE_MAX_LENGTH;
+    const isOverLimit = currentLength > maxLength;
+    
+    return {
+      currentLength,
+      maxLength,
+      isOverLimit,
+      displayText: `${currentLength}/${(maxLength / 1000).toFixed(0)}K characters`,
+      color: isOverLimit ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+    };
+  };
 
   // Track changes
   useEffect(() => {
@@ -426,6 +454,20 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
 
   // Save approach with centralized validation
   const handleSave = () => {
+    // ADDED: Check character limits before submission
+    const textStatus = getTextCharacterStatus();
+    const codeStatus = getCodeCharacterStatus();
+    
+    if (textStatus.isOverLimit) {
+      toast.error(`Description must not exceed ${(textStatus.maxLength / 1000).toFixed(0)}K characters. Currently: ${textStatus.currentLength} characters.`);
+      return;
+    }
+    
+    if (codeStatus.isOverLimit) {
+      toast.error(`Code must not exceed ${(codeStatus.maxLength / 1000).toFixed(0)}K characters. Currently: ${codeStatus.currentLength} characters.`);
+      return;
+    }
+
     if (!contentValidation.valid) {
       toast.error(contentValidation.errors[0]);
       return;
@@ -447,7 +489,6 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
       {
         onSuccess: () => {
           setHasChanges(false);
-          // toast.success('Approach updated successfully!');
         },
       }
     );
@@ -628,7 +669,10 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
 
   // Get save button style based on validation and limits
   const getSaveButtonStyle = () => {
-    if (!hasChanges || updateApproachMutation.isPending || !contentValidation.valid) {
+    const textStatus = getTextCharacterStatus();
+    const codeStatus = getCodeCharacterStatus();
+    
+    if (!hasChanges || updateApproachMutation.isPending || !contentValidation.valid || textStatus.isOverLimit || codeStatus.isOverLimit) {
       return "bg-gray-400 text-gray-200 cursor-not-allowed";
     }
     
@@ -643,9 +687,29 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
     return "bg-blue-600 text-white hover:bg-blue-700";
   };
  
-  // FIXED: Create display status message that shows actual count
+  // Create display status message that shows actual count
   const getDisplayStatusMessage = () => {
-    // Keep the validation message for content validation
+    const textStatus = getTextCharacterStatus();
+    const codeStatus = getCodeCharacterStatus();
+    
+    // Priority: Character limits validation errors
+    if (textStatus.isOverLimit) {
+      return {
+        message: `Description exceeds ${(textStatus.maxLength / 1000).toFixed(0)}K character limit`,
+        type: 'error' as const,
+        color: "text-red-600 dark:text-red-400"
+      };
+    }
+    
+    if (codeStatus.isOverLimit) {
+      return {
+        message: `Code exceeds ${(codeStatus.maxLength / 1000).toFixed(0)}K character limit`,
+        type: 'error' as const,
+        color: "text-red-600 dark:text-red-400"
+      };
+    }
+
+    // Content validation errors
     if (!contentValidation.valid) {
       return {
         message: contentValidation.errors[0],
@@ -673,7 +737,7 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* UPDATED: Compact Header - moved navigation to right side */}
+      {/* Compact Header */}
       <div className="flex items-center justify-between px-2 py-1 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-1.5">
           <h2 className="text-xs font-medium text-gray-900 dark:text-white">
@@ -686,7 +750,6 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
           )}
         </div>
 
-        {/* MOVED: All navigation and action buttons to top right */}
         <div className="flex items-center space-x-1">
           {/* Back Button */}
           <button
@@ -710,14 +773,18 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
           {/* Save Changes */}
           <button
             onClick={handleSave}
-            disabled={!hasChanges || updateApproachMutation.isPending || !contentValidation.valid}
+            disabled={!hasChanges || updateApproachMutation.isPending || !contentValidation.valid || getTextCharacterStatus().isOverLimit || getCodeCharacterStatus().isOverLimit}
             className={`flex items-center space-x-0.5 px-1.5 py-0.5 text-xs rounded transition-colors ${getSaveButtonStyle()}`}
             title={
-              !contentValidation.valid 
-                ? contentValidation.errors[0]
-                : !submissionStatus.canSubmit && submissionStatus.type === 'error'
-                  ? submissionStatus.message
-                  : 'Save your changes'
+              getTextCharacterStatus().isOverLimit 
+                ? `Description exceeds ${(getTextCharacterStatus().maxLength / 1000).toFixed(0)}K character limit`
+                : getCodeCharacterStatus().isOverLimit
+                  ? `Code exceeds ${(getCodeCharacterStatus().maxLength / 1000).toFixed(0)}K character limit`
+                  : !contentValidation.valid 
+                    ? contentValidation.errors[0]
+                    : !submissionStatus.canSubmit && submissionStatus.type === 'error'
+                      ? submissionStatus.message
+                      : 'Save your changes'
             }
           >
             <Save size={10} />
@@ -950,7 +1017,7 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
             )}
           </div>
 
-          {/* UPDATED: Bottom Action Bar for Code Editor with corrected approach status */}
+          {/* Bottom Action Bar for Code Editor with live character count */}
           <div className="px-3 py-1 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-1.5">
@@ -981,9 +1048,9 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
                 )}
               </div>
 
-              {/* FIXED: Right side with corrected approach status and code size */}
+              {/* Right side with approach status and live code character count */}
               <div className="flex items-center space-x-3 text-xs">
-                {/* FIXED: Display Status shows actual count including current approach */}
+                {/* Display Status */}
                 <div className={`flex items-center space-x-1 ${displayStatus.color}`}>
                   {displayStatus.type === 'error' && (
                     <AlertCircle size={12} />
@@ -994,11 +1061,9 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
                 {/* Code Size Separator */}
                 <div className="h-3 w-px bg-gray-300 dark:bg-gray-600"></div>
                 
-                {/* Code Size */}
-                <div className="text-gray-500 dark:text-gray-400">
-                  {ApproachLimitCalculator.formatSize(
-                    ApproachLimitCalculator.calculateContentSize("", code)
-                  )}
+                {/* ADDED: Live Code Character Count */}
+                <div className={`${getCodeCharacterStatus().color}`}>
+                  {getCodeCharacterStatus().displayText}
                 </div>
               </div>
             </div>
@@ -1018,13 +1083,14 @@ export function ApproachEditor({ approach, onBack }: ApproachEditorProps) {
           className="bg-white dark:bg-gray-800 flex flex-col"
           style={{ width: `${100 - leftPanelWidth}%` }}
         >
-          {/* Description Header */}
+          {/* UPDATED: Description Header with Live Character Count */}
           <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-sm font-medium text-gray-900 dark:text-white">
               Approach Description
             </h3>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              {textContent.length}/{APPROACH_VALIDATION.TEXT_MAX_LENGTH} chars
+            {/* UPDATED: Live Text Character Count */}
+            <div className={`text-xs ${getTextCharacterStatus().color}`}>
+              {getTextCharacterStatus().displayText}
             </div>
           </div>
 
