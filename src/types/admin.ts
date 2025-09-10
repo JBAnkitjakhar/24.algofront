@@ -113,7 +113,7 @@ export interface UserListItem {
   image?: string;
   role: UserRole;
   createdAt: string; // ISO string from LocalDateTime
-  updatedAt: string; // ISO string from LocalDateTime  
+  updatedAt: string; // ISO string from LocalDateTime
   primarySuperAdmin: boolean; // matches backend field name
 }
 
@@ -174,26 +174,34 @@ export interface UserProgressDTO {
 }
 
 export interface UserProgressStats {
-  totalSolved: number;
-  solvedByLevel: {
-    easy: number;
-    medium: number;
-    hard: number;
-  };
   totalQuestions: number;
-  totalByLevel: {
-    easy: number;
-    medium: number;
-    hard: number;
-  };
-  progressPercentage: number;
+  recentSolved: number;
+  totalSolved: number;
   progressByLevel: {
     easy: number;
     medium: number;
     hard: number;
   };
-  streak: number;
-  recentSolved: number;
+  totalByLevel: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+  solvedByLevel: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+  progressPercentage: number;
+  recentSolvedQuestions: RecentSolvedQuestion[];
+}
+
+export interface RecentSolvedQuestion {
+  questionId: string;
+  title: string;
+  category: string;
+  level: string;
+  solvedAt: string; // ISO date string
 }
 
 export interface CategoryProgressStats {
@@ -303,9 +311,9 @@ export interface DeleteCategoryResponse {
 
 // Question Management Types
 export enum QuestionLevel {
-  EASY = 'EASY',
-  MEDIUM = 'MEDIUM',
-  HARD = 'HARD'
+  EASY = "EASY",
+  MEDIUM = "MEDIUM",
+  HARD = "HARD",
 }
 
 export interface CodeSnippet {
@@ -398,10 +406,13 @@ export interface QuestionStats {
     medium: number;
     hard: number;
   };
-  byCategory: Record<string, {
-    name: string;
-    count: number;
-  }>;
+  byCategory: Record<
+    string,
+    {
+      name: string;
+      count: number;
+    }
+  >;
 }
 
 // Image Upload Response (matches CloudinaryService response)

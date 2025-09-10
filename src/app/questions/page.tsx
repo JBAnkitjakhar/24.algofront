@@ -1,4 +1,4 @@
-// src/app/questions/page.tsx - UPDATED with real user progress data
+// src/app/questions/page.tsx  
 
 'use client';
 

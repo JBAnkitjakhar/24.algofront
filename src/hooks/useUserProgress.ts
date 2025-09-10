@@ -1,4 +1,4 @@
-// src/hooks/useUserProgress.ts  
+// src/hooks/useUserProgress.ts - UPDATED to handle real API responses
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userProgressApiService } from '@/lib/api/userProgressService';
@@ -13,6 +13,7 @@ import type {
 
 /**
  * Hook to get current user's progress statistics
+ * This is the main hook for the /me page
  */
 export function useCurrentUserProgressStats() {
   const { user } = useAuth();
@@ -20,14 +21,12 @@ export function useCurrentUserProgressStats() {
   return useQuery({
     queryKey: QUERY_KEYS.USER_PROGRESS.CURRENT_STATS,
     queryFn: async (): Promise<UserProgressStats> => {
-      const response = await userProgressApiService.getCurrentUserProgressStats();
-      if (response.success && response.data) {
-        return response.data;
-      }
-      throw new Error(response.message || 'Failed to fetch progress stats');
+      return await userProgressApiService.getCurrentUserProgressStats();
     },
     enabled: !!user, // Only fetch if user is authenticated
     staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
   });
 }
 
@@ -40,14 +39,12 @@ export function useCurrentUserRecentProgress() {
   return useQuery({
     queryKey: QUERY_KEYS.USER_PROGRESS.CURRENT_RECENT,
     queryFn: async (): Promise<UserProgressDTO[]> => {
-      const response = await userProgressApiService.getCurrentUserRecentProgress();
-      if (response.success && response.data) {
-        return response.data;
-      }
-      throw new Error(response.message || 'Failed to fetch recent progress');
+      return await userProgressApiService.getCurrentUserRecentProgress();
     },
     enabled: !!user,
     staleTime: 1 * 60 * 1000, // 1 minute
+    gcTime: 3 * 60 * 1000, // 3 minutes
+    retry: 2,
   });
 }
 
@@ -60,36 +57,12 @@ export function useQuestionProgress(questionId: string) {
   return useQuery({
     queryKey: QUERY_KEYS.USER_PROGRESS.QUESTION_PROGRESS(questionId),
     queryFn: async (): Promise<UserProgressDTO | null> => {
-      try {
-        const response = await userProgressApiService.getQuestionProgress(questionId);
-        if (response.success && response.data) {
-          return response.data;
-        }
-        return null;
-      } catch (error) {
-        // Handle 404 gracefully - it means no progress record exists yet
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const axiosError = error as { response?: { status?: number } };
-        
-        if (axiosError.response?.status === 404 || errorMessage.includes('404')) {
-          return null;
-        }
-        // Re-throw other errors
-        throw error;
-      }
+      return await userProgressApiService.getQuestionProgress(questionId);
     },
     enabled: !!user && !!questionId,
     staleTime: 30 * 1000, // 30 seconds
-    retry: (failureCount, error) => {
-      // Don't retry on 404 errors (question not solved yet)
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const axiosError = error as { response?: { status?: number } };
-      
-      if (axiosError.response?.status === 404 || errorMessage.includes('404')) {
-        return false;
-      }
-      return failureCount < 2;
-    },
+    gcTime: 2 * 60 * 1000, // 2 minutes
+    retry: false, // Don't retry - 404s are expected for questions without progress
   });
 }
 
@@ -102,14 +75,12 @@ export function useCategoryProgress(categoryId: string) {
   return useQuery({
     queryKey: QUERY_KEYS.USER_PROGRESS.CATEGORY_PROGRESS(categoryId),
     queryFn: async (): Promise<CategoryProgressStats> => {
-      const response = await userProgressApiService.getCategoryProgress(categoryId);
-      if (response.success && response.data) {
-        return response.data;
-      }
-      throw new Error(response.message || 'Failed to fetch category progress');
+      return await userProgressApiService.getCategoryProgress(categoryId);
     },
     enabled: !!user && !!categoryId,
     staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
   });
 }
 
@@ -132,11 +103,7 @@ export function useUpdateQuestionProgress() {
         throw new Error('User must be authenticated to update progress');
       }
 
-      const response = await userProgressApiService.updateQuestionProgress(questionId, solved);
-      if (response.success && response.data) {
-        return response.data;
-      }
-      throw new Error(response.message || 'Failed to update question progress');
+      return await userProgressApiService.updateQuestionProgress(questionId, solved);
     },
     onSuccess: (updatedProgress, variables) => {
       const { questionId, solved } = variables;
@@ -157,15 +124,12 @@ export function useUpdateQuestionProgress() {
         queryKey: QUERY_KEYS.QUESTIONS.DETAIL(questionId) 
       });
 
-      // Invalidate category progress if we have category info
-      if (updatedProgress.questionId) {
-        // We might need to get the category ID - for now invalidate all category progress
-        queryClient.invalidateQueries({ 
-          predicate: (query) => 
-            query.queryKey[0] === 'userProgress' && 
-            query.queryKey[1] === 'category'
-        });
-      }
+      // Invalidate category progress queries
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          query.queryKey[0] === 'userProgress' && 
+          query.queryKey[1] === 'category'
+      });
 
       // Show success toast
       const action = solved ? 'marked as solved' : 'marked as unsolved';
@@ -192,52 +156,26 @@ export function useIsQuestionSolved(questionId: string) {
 }
 
 /**
- * Hook to get multiple questions progress (for lists)
- * This fetches progress for multiple questions in parallel
+ * Hook to get multiple questions progress using the bulk endpoint
+ * This is more efficient than making individual requests
  */
 export function useMultipleQuestionProgress(questionIds: string[]) {
   const { user } = useAuth();
 
-  const queries = useQuery({
-    queryKey: ['userProgress', 'multiple', questionIds.sort()],
+  return useQuery({
+    queryKey: ['userProgress', 'bulk', questionIds.sort()],
     queryFn: async (): Promise<Record<string, boolean>> => {
       if (!user || questionIds.length === 0) {
         return {};
       }
 
-      // Fetch progress for all questions in parallel
-      const progressPromises = questionIds.map(async (questionId) => {
-        try {
-          const response = await userProgressApiService.getQuestionProgress(questionId);
-          return {
-            questionId,
-            solved: response.success && response.data ? response.data.solved : false,
-          };
-        } catch (error) {
-          console.error(error);
-          // Handle ALL errors silently - 404s are expected for questions without progress
-          return { questionId, solved: false };
-        }
-      });
-
-      const progressResults = await Promise.all(progressPromises);
-      
-      // Convert to Record<questionId, isSolved>
-      return progressResults.reduce((acc, { questionId, solved }) => {
-        acc[questionId] = solved;
-        return acc;
-      }, {} as Record<string, boolean>);
+      return await userProgressApiService.getBulkQuestionProgress(questionIds);
     },
     enabled: !!user && questionIds.length > 0,
     staleTime: 1 * 60 * 1000, // 1 minute
-    retry: false, // Don't retry since we handle errors gracefully
-    // Make React Query silent about these errors
-    meta: {
-      errorBoundary: false,
-    },
+    gcTime: 3 * 60 * 1000, // 3 minutes
+    retry: false, // Don't retry since the bulk endpoint handles errors gracefully
   });
-
-  return queries;
 }
 
 // ADMIN HOOKS (for future use)
@@ -251,14 +189,12 @@ export function useUserProgressStats(userId: string) {
   return useQuery({
     queryKey: QUERY_KEYS.USER_PROGRESS.USER_STATS(userId),
     queryFn: async (): Promise<UserProgressStats> => {
-      const response = await userProgressApiService.getUserProgressStats(userId);
-      if (response.success && response.data) {
-        return response.data;
-      }
-      throw new Error(response.message || 'Failed to fetch user progress stats');
+      return await userProgressApiService.getUserProgressStats(userId);
     },
     enabled: isAdmin() && !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
   });
 }
 
@@ -271,13 +207,11 @@ export function useAllUserProgress(userId: string) {
   return useQuery({
     queryKey: QUERY_KEYS.USER_PROGRESS.USER_ALL(userId),
     queryFn: async (): Promise<UserProgressDTO[]> => {
-      const response = await userProgressApiService.getAllUserProgress(userId);
-      if (response.success && response.data) {
-        return response.data;
-      }
-      throw new Error(response.message || 'Failed to fetch all user progress');
+      return await userProgressApiService.getAllUserProgress(userId);
     },
     enabled: isAdmin() && !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
   });
 }
