@@ -1,4 +1,4 @@
-// src/app/questions/page.tsx - FULLY OPTIMIZED VERSION
+// src/app/questions/page.tsx - FULLY OPTIMIZED WITH SMART CACHING
 
 'use client';
 
@@ -7,11 +7,11 @@ import UserLayout from '@/components/layout/UserLayout';
 import { BookOpen, Search, Filter, Clock, CheckCircle2, Circle } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuestionSummaries } from '@/hooks/useOptimizedQuestions'; // UPDATED IMPORT
+import { useQuestionSummaries } from '@/hooks/useOptimizedQuestions';
+import { useCategoriesWithProgress } from '@/hooks/useOptimizedCategories';
 import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
-import type { QuestionLevel, QuestionSummaryDTO} from '@/types';
-import { useCategories } from '@/hooks/useCategoryManagement';
+import type { QuestionLevel, QuestionSummaryDTO } from '@/types';
 
 function QuestionsContent() {
   const router = useRouter();
@@ -41,15 +41,19 @@ function QuestionsContent() {
     search: searchTerm.trim() || undefined,
   }), [page, selectedCategory, selectedDifficulty, searchTerm]);
 
-  // SINGLE API CALL - Gets questions with embedded user progress
+  // SINGLE OPTIMIZED API CALL - Gets questions with embedded user progress
+  // Features:
+  // - Fresh data on page refresh (staleTime: 0)
+  // - Auto-refresh after 30 minutes
+  // - Smart caching between navigations
   const { 
     data: questionsData, 
     isLoading: questionsLoading,
     error: questionsError 
   } = useQuestionSummaries(questionParams);
 
-  // Get categories for filter dropdown (lightweight call)
-  const { data: categories = [] } = useCategories();
+  // Get categories for filter dropdown (lightweight call with progress data)
+  const { data: categoriesWithProgress = [] } = useCategoriesWithProgress();
 
   const questions = questionsData?.content || [];
   const totalPages = questionsData?.totalPages || 0;
@@ -170,7 +174,7 @@ function QuestionsContent() {
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All Categories</option>
-                {categories.map((category) => (
+                {categoriesWithProgress.map((category) => (
                   <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </select>
@@ -190,9 +194,14 @@ function QuestionsContent() {
 
             <div className="mt-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
               <span>Showing {filteredQuestions.length} of {totalElements} questions</span>
-              <span className="text-green-600 dark:text-green-400">
-                ✓ Real-time updates enabled
-              </span>
+              <div className="flex items-center space-x-4">
+                <span className="text-green-600 dark:text-green-400">
+                  ✓ Real-time updates enabled
+                </span>
+                <span className="text-blue-600 dark:text-blue-400">
+                  ⚡ Auto-refresh every 30 minutes
+                </span>
+              </div>
             </div>
           </div>
 

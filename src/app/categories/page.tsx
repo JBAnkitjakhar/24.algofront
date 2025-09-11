@@ -1,4 +1,4 @@
-// src/app/categories/page.tsx - FULLY OPTIMIZED VERSION
+// src/app/categories/page.tsx - FULLY OPTIMIZED WITH SMART CACHING
 
 "use client";
 
@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import UserLayout from "@/components/layout/UserLayout";
 import { FolderOpen, Search } from "lucide-react";
-import { useCategoriesWithProgress } from "@/hooks/useOptimizedCategories"; // UPDATED IMPORT
+import { useCategoriesWithProgress } from "@/hooks/useOptimizedCategories";
 import type { CategoryWithProgress } from "@/types";
 
 function CategoryCard({ category, onClick }: { 
@@ -144,7 +144,12 @@ function CategoriesContent() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
 
-  // SINGLE API CALL - Gets categories with embedded stats and user progress
+  // SINGLE OPTIMIZED API CALL - Gets categories with embedded stats and user progress
+  // Features:
+  // - Fresh data on page refresh (staleTime: 0)
+  // - Auto-refresh after 30 minutes
+  // - Smart caching between navigations
+  // - Immediate refetch on window focus
   const { data: categoriesWithProgress = [], isLoading } = useCategoriesWithProgress();
 
   // Filter categories based on search
@@ -205,6 +210,21 @@ function CategoriesContent() {
             </div>
           )}
 
+          {/* Real-time Update Status */}
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-green-600 dark:text-green-400">
+                ✓ Real-time updates enabled
+              </span>
+              <span className="text-blue-600 dark:text-blue-400">
+                ⚡ Auto-refresh every 30 minutes
+              </span>
+              <span className="text-purple-600 dark:text-purple-400">
+                🔄 Fresh data on page refresh
+              </span>
+            </div>
+          </div>
+
           {/* Categories Grid */}
           {filteredCategories.length === 0 ? (
             <div className="text-center py-12">
@@ -233,7 +253,7 @@ function CategoriesContent() {
               {/* Performance Notice */}
               <div className="mt-8 text-center">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  ✓ Loaded {categoriesWithProgress.length} categories with real-time progress in a single optimized request
+                  Loaded {categoriesWithProgress.length} categories with real-time progress in a single optimized request
                 </p>
               </div>
             </>

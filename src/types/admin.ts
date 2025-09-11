@@ -1,4 +1,4 @@
-// src/types/admin.ts - COMPLETE UPDATED WITH USER PROGRESS AND APPROACH TYPES
+// src/types/admin.ts
 
 import { UserRole } from "./auth";
 
@@ -611,7 +611,7 @@ export interface CategoryWithProgress {
   createdById: string;
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
-  
+
   // Category statistics (embedded)
   questionStats: {
     total: number;
@@ -621,7 +621,7 @@ export interface CategoryWithProgress {
       hard: number;
     };
   };
-  
+
   // User progress for this category (embedded)
   userProgress: {
     solved: number;
@@ -641,26 +641,42 @@ export interface QuestionSummaryDTO {
   categoryId: string;
   categoryName: string;
   level: QuestionLevel;
-  createdAt: string; // ISO date string
-  userProgress: QuestionUserProgressSummary;
-}
-
-export interface QuestionUserProgressSummary {
-  solved: boolean;
-  solvedAt: string | null; // ISO date string or null
-  approachCount: number;
+  createdAt: string;
+  userProgress: {
+    solved: boolean;
+    solvedAt: string | null;
+    approachCount: number;
+  };
 }
 
 // NEW: Question Summary Page Response (optimized pagination)
 export interface QuestionSummaryPageResponse {
   content: QuestionSummaryDTO[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: {
+      sorted: boolean;
+      unsorted: boolean;
+      empty: boolean;
+    };
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  last: boolean;
   totalElements: number;
   totalPages: number;
-  size: number;
-  number: number; // current page number
-  first: boolean;
-  last: boolean;
   numberOfElements: number;
+  first: boolean;
+  size: number;
+  number: number;
+  sort: {
+    sorted: boolean;
+    unsorted: boolean;
+    empty: boolean;
+  };
+  empty: boolean;
 }
 
 // NEW: Category with embedded progress and stats (eliminates N+1 queries)
@@ -669,10 +685,25 @@ export interface CategoryWithProgress {
   name: string;
   createdByName: string;
   createdById: string;
-  createdAt: string; // ISO date string
-  updatedAt: string; // ISO date string
-  questionStats: CategoryQuestionStats;
-  userProgress: CategoryUserProgressStats;
+  createdAt: string;
+  updatedAt: string;
+  questionStats: {
+    total: number;
+    byLevel: {
+      easy: number;
+      medium: number;
+      hard: number;
+    };
+  };
+  userProgress: {
+    solved: number;
+    solvedByLevel: {
+      easy: number;
+      medium: number;
+      hard: number;
+    };
+    progressPercentage: number;
+  };
 }
 
 export interface CategoryQuestionStats {

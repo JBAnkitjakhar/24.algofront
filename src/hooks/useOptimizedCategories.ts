@@ -1,4 +1,4 @@
-// src/hooks/useOptimizedCategories.ts  
+// src/hooks/useOptimizedCategories.ts - ENHANCED WITH SMART CACHING
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { categoryApiService } from '@/lib/api/categoryService';
@@ -14,7 +14,11 @@ import type {
 
 /**
  * OPTIMIZED: Single hook for categories with embedded progress
- * Eliminates N+1 queries completely
+ * Features:
+ * - Fresh data on page refresh (staleTime: 0)
+ * - Auto-refresh every 30 minutes
+ * - Smart caching to avoid unnecessary API calls
+ * - Immediate refetch on window focus
  */
 export function useCategoriesWithProgress() {
   const { user } = useAuth();
@@ -29,12 +33,21 @@ export function useCategoriesWithProgress() {
       throw new Error(response.message || 'Failed to fetch categories with progress');
     },
     enabled: !!user, // Only fetch when authenticated
-    // Uses global defaults: staleTime: 0, refetchOnMount: true
+    
+    // SMART CACHING STRATEGY:
+    // - staleTime: 0 = Always refetch on mount (page refresh gets fresh data)
+    // - gcTime: 30min = Keep in cache for 30 minutes
+    // - refetchInterval: 30min = Auto-refresh stale data
+    // Uses global defaults from queryClient.ts
+    
+    // Additional optimizations for categories page
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
+    notifyOnChangeProps: ['data', 'isLoading', 'error'], // Only trigger re-renders for these changes
   });
 }
 
 /**
- * Create category with comprehensive cache invalidation
+ * Create category with comprehensive cache invalidation for real-time updates
  */
 export function useCreateCategory() {
   const queryClient = useQueryClient();
@@ -53,9 +66,9 @@ export function useCreateCategory() {
       throw new Error(response.message || 'Failed to create category');
     },
     onSuccess: () => {
-      // AGGRESSIVE CACHE INVALIDATION for real-time updates
+      // AGGRESSIVE CACHE INVALIDATION for real-time updates across all components
       
-      // Invalidate categories
+      // 1. Invalidate categories (forces refresh on categories page)
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS 
       });
@@ -63,14 +76,24 @@ export function useCreateCategory() {
         queryKey: QUERY_KEYS.CATEGORIES.LIST 
       });
       
-      // Invalidate questions since they show category names
+      // 2. Invalidate questions since they show category names in dropdowns
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.QUESTIONS.LIST 
       });
+      queryClient.invalidateQueries({
+        predicate: (query) => 
+          query.queryKey[0] === 'questions' && query.queryKey.includes('summary')
+      });
       
-      // Invalidate admin stats
+      // 3. Invalidate admin stats
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.ADMIN.STATS 
+      });
+      
+      // 4. Force immediate refetch for active pages
+      queryClient.refetchQueries({ 
+        queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS,
+        type: 'active' // Only refetch if query is currently active
       });
       
       toast.success('Category created successfully');
@@ -103,7 +126,7 @@ export function useUpdateCategory() {
     onSuccess: (updatedCategory) => {
       // AGGRESSIVE CACHE INVALIDATION
       
-      // Invalidate all category queries
+      // 1. Invalidate all category queries
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS 
       });
@@ -111,9 +134,19 @@ export function useUpdateCategory() {
         queryKey: QUERY_KEYS.CATEGORIES.LIST 
       });
       
-      // CRITICAL: Invalidate questions since category name changed
+      // 2. CRITICAL: Invalidate questions since category name changed
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.QUESTIONS.LIST 
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => 
+          query.queryKey[0] === 'questions' && query.queryKey.includes('summary')
+      });
+      
+      // 3. Force immediate refetch for real-time updates
+      queryClient.refetchQueries({ 
+        queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS,
+        type: 'active'
       });
       
       toast.success(`Category "${updatedCategory.name}" updated successfully`);
@@ -146,7 +179,7 @@ export function useDeleteCategory() {
     onSuccess: (result, categoryId) => {
       // AGGRESSIVE CACHE INVALIDATION
       
-      // Remove all category queries
+      // 1. Remove all category queries
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS 
       });
@@ -154,20 +187,30 @@ export function useDeleteCategory() {
         queryKey: QUERY_KEYS.CATEGORIES.LIST 
       });
       
-      // Remove specific category
+      // 2. Remove specific category from cache completely
       queryClient.removeQueries({ 
         queryKey: QUERY_KEYS.CATEGORIES.DETAIL(categoryId) 
       });
       
-      // CRITICAL: Invalidate questions since category deleted
+      // 3. CRITICAL: Invalidate questions since category deleted
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.QUESTIONS.LIST 
       });
+      queryClient.invalidateQueries({
+        predicate: (query) => 
+          query.queryKey[0] === 'questions' && query.queryKey.includes('summary')
+      });
       
-      // Invalidate user progress
+      // 4. Invalidate user progress since questions were deleted
       queryClient.invalidateQueries({ 
         predicate: (query) => 
           query.queryKey[0] === 'userProgress'
+      });
+      
+      // 5. Force immediate refetch for real-time updates
+      queryClient.refetchQueries({ 
+        queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS,
+        type: 'active'
       });
       
       toast.success(

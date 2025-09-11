@@ -1,4 +1,4 @@
-// src/app/categories/[id]/page.tsx - COMPLETE with real user progress data
+// src/app/categories/[id]/page.tsx  
 
 'use client';
 
@@ -16,20 +16,19 @@ import {
   ArrowLeft,
   ChevronRight
 } from 'lucide-react';
-import { useCategoryById, useCategoryStats } from '@/hooks/useCategoryManagement';
-import { useCategoryProgress, useMultipleQuestionProgress } from '@/hooks/useUserProgress';
+import { useCategoriesWithProgress } from '@/hooks/useOptimizedCategories';
+import { useQuestionSummaries } from '@/hooks/useOptimizedQuestions';
 import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
-import type { QuestionLevel } from '@/types';
-import { useQuestions } from '@/hooks/useQuestionManagement';
+import type { QuestionLevel, QuestionSummaryDTO, CategoryWithProgress } from '@/types';
 
 function CategoryDetailContent() {
   const params = useParams();
   const router = useRouter();
   const categoryId = params.id as string;
   
-  const [searchInput, setSearchInput] = useState(''); // For immediate UI updates
-  const [searchTerm, setSearchTerm] = useState(''); // For API calls with debounce
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
   const [page, setPage] = useState(0);
   const pageSize = 20;
@@ -38,39 +37,36 @@ function CategoryDetailContent() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearchTerm(searchInput);
-      setPage(0); // Reset to first page when search changes
+      setPage(0);
     }, 1000);
-
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // API calls
-  const { data: category, isLoading: categoryLoading } = useCategoryById(categoryId);
-  const { data: categoryStats } = useCategoryStats(categoryId);
+  // OPTIMIZED: Get all categories with progress in single call
+  const { data: categoriesWithProgress = [], isLoading: categoriesLoading } = useCategoriesWithProgress();
   
-  // REAL DATA: Get user's actual progress for this category
-  const { data: userCategoryProgress } = useCategoryProgress(categoryId);
-  
+  // Find current category from the optimized data
+  const category = categoriesWithProgress.find((cat: CategoryWithProgress) => cat.id === categoryId);
+
+  // Build query parameters for questions in this category
   const questionParams = useMemo(() => ({
     page,
     size: pageSize,
-    categoryId, // Pass categoryId to filter by this category
+    categoryId, // Filter by this specific category
     level: selectedLevel === 'all' ? undefined : selectedLevel,
-    // Updated to only search in title, not description/statement
     search: searchTerm.trim() || undefined,
   }), [page, selectedLevel, searchTerm, categoryId]);
 
+  // OPTIMIZED: Single API call gets questions with embedded user progress
   const { 
     data: questionsData, 
-    isLoading: questionsLoading 
-  } = useQuestions(questionParams);
+    isLoading: questionsLoading,
+    error: questionsError 
+  } = useQuestionSummaries(questionParams);
 
   const questions = questionsData?.content || [];
   const totalPages = questionsData?.totalPages || 0;
-
-  // REAL DATA: Get solved status for all questions in this page
-  const questionIds = questions.map(q => q.id);
-  const { data: questionsProgress } = useMultipleQuestionProgress(questionIds);
+  const totalElements = questionsData?.totalElements || 0;
 
   const getDifficultyColor = (difficulty: QuestionLevel) => {
     return QUESTION_LEVEL_COLORS[difficulty];
@@ -80,7 +76,7 @@ function CategoryDetailContent() {
     router.push(`/questions/${questionId}`);
   };
 
-  if (categoryLoading) {
+  if (categoriesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -113,13 +109,36 @@ function CategoryDetailContent() {
     );
   }
 
-  const totalQuestions = categoryStats?.totalQuestions || 0;
-  const questionsByLevel = categoryStats?.questionsByLevel || { easy: 0, medium: 0, hard: 0 };
-  
-  // REAL DATA: Use actual user progress instead of mock data
-  const solvedQuestions = userCategoryProgress?.solvedInCategory || 0;
-  const progressPercentage = userCategoryProgress?.categoryProgressPercentage || 0;
-  const solvedByLevel = userCategoryProgress?.solvedByLevel || { easy: 0, medium: 0, hard: 0 };
+  // OPTIMIZED: Get data directly from the single API call
+  const totalQuestions = category.questionStats.total;
+  const questionsByLevel = category.questionStats.byLevel;
+  const solvedQuestions = category.userProgress.solved;
+  const progressPercentage = category.userProgress.progressPercentage;
+  const solvedByLevel = category.userProgress.solvedByLevel;
+
+  if (questionsError) {
+    return (
+      <UserLayout>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="text-center">
+            <BookOpen className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Error Loading Questions
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Unable to load questions for this category.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </UserLayout>
+    );
+  }
 
   return (
     <UserLayout>
@@ -151,7 +170,7 @@ function CategoryDetailContent() {
                 Master {category.name.toLowerCase()} problems step by step
               </p>
 
-              {/* REAL DATA: Updated Progress Stats */}
+              {/* OPTIMIZED: Real-time Progress Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                   <div className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -177,7 +196,7 @@ function CategoryDetailContent() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* REAL DATA: Difficulty Breakdown with solved counts */}
+          {/* OPTIMIZED: Real-time Difficulty Breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center space-x-3 mb-4">
@@ -246,7 +265,7 @@ function CategoryDetailContent() {
           {/* Filters */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Updated Search with debounce */}
+              {/* Search with debounce */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
@@ -261,7 +280,10 @@ function CategoryDetailContent() {
               {/* Difficulty Filter */}
               <select
                 value={selectedLevel}
-                onChange={(e) => setSelectedLevel(e.target.value)}
+                onChange={(e) => {
+                  setSelectedLevel(e.target.value);
+                  setPage(0);
+                }}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All Difficulties</option>
@@ -270,10 +292,23 @@ function CategoryDetailContent() {
                 <option value="HARD">Hard</option>
               </select>
             </div>
+
+            {/* Real-time Update Status */}
+            <div className="mt-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+              <span>Showing {questions.length} of {totalElements} questions</span>
+              <div className="flex items-center space-x-4">
+                <span className="text-green-600 dark:text-green-400">
+                  ✓ Real-time updates enabled
+                </span>
+                <span className="text-blue-600 dark:text-blue-400">
+                  ⚡ Auto-refresh every 30 minutes
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Questions List */}
-          {questionsLoading ? (
+          {questionsLoading && questions.length === 0 ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-gray-600 dark:text-gray-400">Loading questions...</p>
@@ -292,10 +327,10 @@ function CategoryDetailContent() {
             </div>
           ) : (
             <div className="space-y-4">
-              {questions.map((question, index) => {
+              {questions.map((question: QuestionSummaryDTO, index) => {
                 const levelColors = getDifficultyColor(question.level);
-                // REAL DATA: Get solved status from API response
-                const isSolved = questionsProgress?.[question.id] || false;
+                // OPTIMIZED: Use embedded user progress data
+                const isSolved = question.userProgress.solved;
                 
                 return (
                   <div
@@ -305,7 +340,7 @@ function CategoryDetailContent() {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
-                        {/* Status Icon - REAL DATA */}
+                        {/* Status Icon with embedded progress data */}
                         <div className="flex-shrink-0 pt-1">
                           {isSolved ? (
                             <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -325,17 +360,25 @@ function CategoryDetailContent() {
                             </span>
                           </div>
 
-                          <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                            {question.statement.length > 150 
-                              ? question.statement.substring(0, 150) + '...' 
-                              : question.statement}
-                          </p>
-
-                          <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                          <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
                             <div className="flex items-center space-x-1">
                               <Clock className="w-4 h-4" />
                               <span>Created {dateUtils.formatRelativeTime(question.createdAt)}</span>
                             </div>
+                            {question.userProgress.approachCount > 0 && (
+                              <div className="flex items-center space-x-1">
+                                <BookOpen className="w-4 h-4" />
+                                <span>{question.userProgress.approachCount} approach{question.userProgress.approachCount !== 1 ? 'es' : ''}</span>
+                              </div>
+                            )}
+                            {isSolved && question.userProgress.solvedAt && (
+                              <div className="flex items-center space-x-1">
+                                <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                <span className="text-green-600 dark:text-green-400">
+                                  Solved {dateUtils.formatRelativeTime(question.userProgress.solvedAt)}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -350,13 +393,13 @@ function CategoryDetailContent() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-8">
               <div className="text-sm text-gray-700 dark:text-gray-300">
-                Showing {page * pageSize + 1} to {Math.min((page + 1) * pageSize, questionsData?.totalElements || 0)} of{' '}
-                {questionsData?.totalElements || 0} results
+                Showing {page * pageSize + 1} to {Math.min((page + 1) * pageSize, totalElements)} of{' '}
+                {totalElements} results
               </div>
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setPage(Math.max(0, page - 1))}
-                  disabled={page === 0}
+                  disabled={page === 0 || questionsLoading}
                   className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
                   Previous
@@ -366,7 +409,7 @@ function CategoryDetailContent() {
                 </span>
                 <button
                   onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-                  disabled={page >= totalPages - 1}
+                  disabled={page >= totalPages - 1 || questionsLoading}
                   className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
                   Next

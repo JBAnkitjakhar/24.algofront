@@ -1,4 +1,4 @@
-// src/hooks/useOptimizedQuestions.ts 
+// src/hooks/useOptimizedQuestions.ts - ENHANCED WITH SMART CACHING
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { questionApiService } from '@/lib/api/questionService';
@@ -14,7 +14,11 @@ import type {
 
 /**
  * OPTIMIZED: Single hook for questions with embedded user progress
- * Eliminates N+1 queries completely
+ * Features:
+ * - Fresh data on page refresh (staleTime: 0)
+ * - Auto-refresh every 30 minutes
+ * - Smart caching to avoid unnecessary API calls
+ * - Immediate refetch on window focus
  */
 export function useQuestionSummaries(params?: {
   page?: number;
@@ -31,12 +35,21 @@ export function useQuestionSummaries(params?: {
       return await questionApiService.getQuestionSummaries(params);
     },
     enabled: !!user, // Only fetch when authenticated
-    // Uses global defaults: staleTime: 0, refetchOnMount: true
+    
+    // SMART CACHING STRATEGY:
+    // - staleTime: 0 = Always refetch on mount (page refresh gets fresh data)
+    // - gcTime: 30min = Keep in cache for 30 minutes
+    // - refetchInterval: 30min = Auto-refresh stale data
+    // Uses global defaults from queryClient.ts
+    
+    // Additional optimizations for questions page
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
+    notifyOnChangeProps: ['data', 'isLoading', 'error'], // Only trigger re-renders for these changes
   });
 }
 
 /**
- * Create question with comprehensive cache invalidation
+ * Create question with comprehensive cache invalidation for real-time updates
  */
 export function useCreateQuestion() {
   const queryClient = useQueryClient();
@@ -57,19 +70,32 @@ export function useCreateQuestion() {
     onSuccess: () => {
       // AGGRESSIVE CACHE INVALIDATION for real-time updates
       
-      // Invalidate ALL question-related queries
+      // 1. Invalidate ALL question-related queries (forces refresh on questions page)
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.QUESTIONS.LIST 
       });
+      queryClient.invalidateQueries({
+        predicate: (query) => 
+          query.queryKey[0] === 'questions' && query.queryKey.includes('summary')
+      });
       
-      // Invalidate categories since question count changed
+      // 2. Invalidate categories since question count changed
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS 
       });
       
-      // Invalidate admin stats
+      // 3. Invalidate admin stats
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.ADMIN.STATS 
+      });
+      
+      // 4. Force immediate refetch for active pages
+      queryClient.refetchQueries({
+        predicate: (query) => 
+          query.queryKey[0] === 'questions' && 
+          query.queryKey.includes('summary') &&
+          query.state.status === 'success', // Only refetch successful queries
+        type: 'active' // Only refetch if query is currently active
       });
       
       toast.success('Question created successfully');
@@ -102,19 +128,32 @@ export function useUpdateQuestion() {
     onSuccess: (updatedQuestion, variables) => {
       // AGGRESSIVE CACHE INVALIDATION
       
-      // Invalidate ALL question queries for real-time updates
+      // 1. Invalidate ALL question queries for real-time updates
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.QUESTIONS.LIST 
       });
+      queryClient.invalidateQueries({
+        predicate: (query) => 
+          query.queryKey[0] === 'questions' && query.queryKey.includes('summary')
+      });
       
-      // Invalidate specific question detail
+      // 2. Invalidate specific question detail
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.QUESTIONS.DETAIL(variables.id) 
       });
       
-      // Invalidate categories (category name might have changed)
+      // 3. Invalidate categories (category name might have changed)
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS 
+      });
+      
+      // 4. Force immediate refetch for real-time updates
+      queryClient.refetchQueries({
+        predicate: (query) => 
+          query.queryKey[0] === 'questions' && 
+          query.queryKey.includes('summary') &&
+          query.state.status === 'success',
+        type: 'active'
       });
       
       toast.success(`Question "${updatedQuestion.title}" updated successfully`);
@@ -147,25 +186,38 @@ export function useDeleteQuestion() {
     onSuccess: (result, questionId) => {
       // AGGRESSIVE CACHE INVALIDATION
       
-      // Remove from all question queries
+      // 1. Remove from all question queries
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.QUESTIONS.LIST 
       });
+      queryClient.invalidateQueries({
+        predicate: (query) => 
+          query.queryKey[0] === 'questions' && query.queryKey.includes('summary')
+      });
       
-      // Remove specific question
+      // 2. Remove specific question from cache completely
       queryClient.removeQueries({ 
         queryKey: QUERY_KEYS.QUESTIONS.DETAIL(questionId) 
       });
       
-      // Update categories since question count decreased
+      // 3. Update categories since question count decreased
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS 
       });
       
-      // Invalidate user progress since question no longer exists
+      // 4. Invalidate user progress since question no longer exists
       queryClient.invalidateQueries({ 
         predicate: (query) => 
           query.queryKey[0] === 'userProgress'
+      });
+      
+      // 5. Force immediate refetch for real-time updates
+      queryClient.refetchQueries({
+        predicate: (query) => 
+          (query.queryKey[0] === 'questions' && query.queryKey.includes('summary')) ||
+          (query.queryKey[0] === 'categories' && query.queryKey.includes('with-progress')) &&
+          query.state.status === 'success',
+        type: 'active'
       });
       
       toast.success('Question deleted successfully');
