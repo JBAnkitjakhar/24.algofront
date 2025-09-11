@@ -29,7 +29,7 @@ import {
 import { CubeTransparentIcon } from '@heroicons/react/24/outline';
 import { useQuestionById } from '@/hooks/useQuestionManagement';
 import { useCategoryById } from '@/hooks/useCategoryManagement';
-import { useQuestionProgress, useUpdateQuestionProgress } from '@/hooks/useUserProgress';
+import { useUpdateQuestionProgress } from '@/hooks/useUserProgress'; // Only need the update mutation
 import { useVisualizerFilesBySolution } from '@/hooks/useSolutionManagement';
 import { useApproachesByQuestion } from '@/hooks/useApproachManagement';
 import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
@@ -116,18 +116,17 @@ function QuestionDetailContent() {
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // Percentage
   const isResizingRef = useRef(false);
 
-  // API calls
+  // FIXED: Only one API call needed - question detail already includes progress
   const { data: questionDetail, isLoading: questionLoading } = useQuestionById(questionId);
   const question = questionDetail?.question;
   const solutions = questionDetail?.solutions || [];
+  
+  // FIXED: Get progress data directly from question detail response
+  const solved = questionDetail?.solved || false;
+  const solvedAt = questionDetail?.solvedAt;
 
   const { data: category } = useCategoryById(question?.categoryId || '');
   const { data: userApproaches = [] } = useApproachesByQuestion(questionId);
-
-  // REAL DATA: Get user's progress for this question
-  const { data: questionProgress } = useQuestionProgress(questionId);
-  const solved = questionProgress?.solved || false;
-  const solvedAt = questionProgress?.solvedAt;
 
   // Mutation for updating progress
   const updateProgressMutation = useUpdateQuestionProgress();
@@ -247,7 +246,7 @@ function QuestionDetailContent() {
             />
           </div>
         ) : editingApproach ? (
-          // FIXED: Show ApproachEditor in full screen, completely hiding the original layout
+          // Show ApproachEditor in full screen, completely hiding the original layout
           <div className="h-full">
             <ApproachEditor
               approach={editingApproach}
@@ -476,7 +475,7 @@ function QuestionDetailContent() {
                     </div>
                   )}
 
-                  {/* UPDATED: My Approaches tab content with edit handler */}
+                  {/* My Approaches tab content with edit handler */}
                   {activeTab === 'submissions' && (
                     <div className="p-4">
                       <UserApproaches 

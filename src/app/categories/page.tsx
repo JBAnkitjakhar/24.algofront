@@ -1,4 +1,4 @@
-// src/app/categories/page.tsx - UPDATED to use optimized endpoint
+// src/app/categories/page.tsx  
 
 "use client";
 
