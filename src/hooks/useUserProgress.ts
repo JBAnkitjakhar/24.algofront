@@ -1,4 +1,4 @@
-// src/hooks/useUserProgress.ts - Corrected API Response Handling
+// src/hooks/useUserProgress.ts  
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userProgressApiService } from '@/lib/api/userProgressService';
@@ -45,7 +45,7 @@ export function useCurrentUserRecentProgress() {
 }
 
 /**
- * PHASE 1 FIX: Hook to get progress for specific question
+ * Hook to get progress for specific question
  * Now properly handles 404 errors when question hasn't been solved
  */
 export function useQuestionProgress(questionId: string) {
@@ -117,7 +117,7 @@ export function useCategoryProgress(categoryId: string) {
 }
 
 /**
- * PHASE 1 ENHANCED: Hook to update question progress with comprehensive cache invalidation
+ * Hook to update question progress with comprehensive cache invalidation
  */
 export function useUpdateQuestionProgress() {
   const queryClient = useQueryClient();

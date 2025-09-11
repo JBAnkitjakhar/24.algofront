@@ -1,4 +1,4 @@
-// src/hooks/useQuestionManagement.ts - Complete Phase 1 Implementation
+// src/hooks/useQuestionManagement.ts  
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { questionApiService } from '@/lib/api/questionService';
@@ -134,7 +134,7 @@ export function useSearchQuestions(query: string) {
 }
 
 /**
- * PHASE 1 ENHANCED: Hook to create question with comprehensive cache invalidation
+ *  Hook to create question with comprehensive cache invalidation
  */
 export function useCreateQuestion() {
   const queryClient = useQueryClient();
@@ -216,7 +216,7 @@ export function useCreateQuestion() {
 }
 
 /**
- * PHASE 1 ENHANCED: Hook to update question with comprehensive cache invalidation
+ * Hook to update question with comprehensive cache invalidation
  */
 export function useUpdateQuestion() {
   const queryClient = useQueryClient();
@@ -289,7 +289,7 @@ export function useUpdateQuestion() {
 }
 
 /**
- * PHASE 1 ENHANCED: Hook to delete question with comprehensive cache invalidation
+ * Hook to delete question with comprehensive cache invalidation
  */
 export function useDeleteQuestion() {
   const queryClient = useQueryClient();

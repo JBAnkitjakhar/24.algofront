@@ -1,4 +1,4 @@
-// src/lib/api/queryClient.ts - Phase 1 Fix for Fresh Data on Refresh
+// src/lib/api/queryClient.ts  
 
 import { QueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
@@ -6,7 +6,7 @@ import { AxiosError } from 'axios';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // PHASE 1 FIX: Reduced stale time for fresher data
+      // Reduced stale time for fresher data
       staleTime: 0, // 0 seconds - always consider data stale on mount
       gcTime: 5 * 60 * 1000, // 5 minutes - keep in memory but refetch when needed
       

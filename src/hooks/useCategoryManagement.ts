@@ -1,4 +1,4 @@
-// src/hooks/useCategoryManagement.ts - Phase 1 Fix
+// src/hooks/useCategoryManagement.ts  
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { categoryApiService } from '@/lib/api/categoryService';
@@ -142,7 +142,7 @@ export function useCategoriesWithStats() {
 }
 
 /**
- * PHASE 1 ENHANCED: Hook to create category with better cache invalidation
+ * Hook to create category with better cache invalidation
  */
 export function useCreateCategory() {
   const queryClient = useQueryClient();
@@ -191,7 +191,7 @@ export function useCreateCategory() {
 }
 
 /**
- * PHASE 1 ENHANCED: Hook to update category with better cache invalidation
+ * Hook to update category with better cache invalidation
  */
 export function useUpdateCategory() {
   const queryClient = useQueryClient();
@@ -241,7 +241,7 @@ export function useUpdateCategory() {
 }
 
 /**
- * PHASE 1 ENHANCED: Hook to delete category with better cache invalidation
+ *  Hook to delete category with better cache invalidation
  */
 export function useDeleteCategory() {
   const queryClient = useQueryClient();
