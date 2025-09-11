@@ -137,16 +137,6 @@ function CallbackHandler() {
             <div className="h-2 w-2 bg-blue-600 rounded-full animate-pulse delay-150"></div>
           </div>
         </div>
-
-        <div className="mt-8 text-xs text-gray-500">
-          If this page doesnt redirect automatically,{' '}
-          <button
-            onClick={() => router.replace(ROUTES.LOGIN)}
-            className="text-blue-600 hover:text-blue-500 underline"
-          >
-            click here to return to login
-          </button>
-        </div>
       </div>
     </div>
   );
