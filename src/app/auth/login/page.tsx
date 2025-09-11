@@ -2,13 +2,14 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/constants';
 import toast from 'react-hot-toast';
 
-export default function LoginPage() {
+// Separate component for handling search params
+function LoginContent() {
   const { loginWithGoogle, loginWithGithub, isAuthenticated, isLoading, error } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -159,5 +160,23 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading fallback component
+function LoginLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  );
+}
+
+// Main page component with Suspense wrapper
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginContent />
+    </Suspense>
   );
 }
