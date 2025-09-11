@@ -1,4 +1,4 @@
-// src/app/categories/page.tsx - UPDATED with real user progress data
+// src/app/categories/page.tsx - UPDATED to use optimized endpoint
 
 "use client";
 
@@ -7,34 +7,18 @@ import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import UserLayout from "@/components/layout/UserLayout";
 import { FolderOpen, Search } from "lucide-react";
-import { useCategoriesWithStats } from "@/hooks/useCategoryManagement";
-import { useCategoryProgress } from "@/hooks/useUserProgress";
-
-interface CategoryWithStats {
-  id: string;
-  name: string;
-  createdByName: string;
-  createdAt: string;
-  totalQuestions: number;
-  questionsByLevel: {
-    easy: number;
-    medium: number;
-    hard: number;
-  };
-  totalSolutions: number;
-}
+import { useCategoriesWithProgress } from "@/hooks/useCategoryManagement"; // UPDATED IMPORT
+import type { CategoryWithProgress } from "@/types"; // NEW TYPE IMPORT
 
 function CategoryCard({ category, onClick }: { 
-  category: CategoryWithStats; 
+  category: CategoryWithProgress; // UPDATED TYPE
   onClick: () => void;
 }) {
-  const totalQuestions = category.totalQuestions;
-  const { easy, medium, hard } = category.questionsByLevel;
-  
-  // REAL DATA: Get user's actual progress for this category
-  const { data: userProgress } = useCategoryProgress(category.id);
-  const completedProblems = userProgress?.solvedInCategory || 0;
-  const progressPercentage = userProgress?.categoryProgressPercentage || 0;
+  // SIMPLIFIED: Data is now directly available from the single API call
+  const totalQuestions = category.questionStats.total;
+  const { easy, medium, hard } = category.questionStats.byLevel;
+  const completedProblems = category.userProgress.solved;
+  const progressPercentage = category.userProgress.progressPercentage;
 
   // Color schemes for categories
   const colorSchemes = [
@@ -94,7 +78,7 @@ function CategoryCard({ category, onClick }: {
         </p>
       </div>
 
-      {/* Category Content - SIMPLIFIED WITH REAL DATA */}
+      {/* Category Content - REAL DATA from optimized endpoint */}
       <div className="p-6">
         {/* Stats */}
         <div className="flex items-center justify-between mb-4">
@@ -120,11 +104,11 @@ function CategoryCard({ category, onClick }: {
           </div>
         </div>
 
-        {/* Difficulty Breakdown - SIMPLIFIED */}
+        {/* Difficulty Breakdown */}
         <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
           <div className="flex items-center space-x-3">
             {totalQuestions === 0 ? (
-              <span className="text-xs italic">Stats will load when you explore</span>
+              <span className="text-xs italic">No problems yet</span>
             ) : (
               <>
                 {easy > 0 && (
@@ -148,12 +132,21 @@ function CategoryCard({ category, onClick }: {
               </>
             )}
           </div>
-          <span className="text-xs">
-            {category.totalSolutions > 0 
-              ? `${category.totalSolutions} solution${category.totalSolutions !== 1 ? 's' : ''}` 
-              : '—'
-            }
-          </span>
+          
+          {/* Progress Bar */}
+          {totalQuestions > 0 && (
+            <div className="flex items-center space-x-2">
+              <div className="w-16 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-300"
+                  style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+                ></div>
+              </div>
+              <span className="text-xs font-medium">
+                {completedProblems}/{totalQuestions}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -164,11 +157,11 @@ function CategoriesContent() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: categoriesWithStats = [], isLoading: categoriesLoading } =
-    useCategoriesWithStats();
+  // UPDATED: Use optimized hook - single API call with all data
+  const { data: categoriesWithProgress = [], isLoading } = useCategoriesWithProgress();
 
   // Filter categories based on search
-  const filteredCategories = categoriesWithStats.filter((category) =>
+  const filteredCategories = categoriesWithProgress.filter((category) =>
     category.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -176,7 +169,7 @@ function CategoriesContent() {
     router.push(`/categories/${categoryId}`);
   };
 
-  if (categoriesLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -212,7 +205,7 @@ function CategoriesContent() {
         {/* Search and Categories */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Search Bar */}
-          {categoriesWithStats.length > 6 && (
+          {categoriesWithProgress.length > 6 && (
             <div className="mb-8">
               <div className="max-w-md mx-auto">
                 <div className="relative">
@@ -251,6 +244,15 @@ function CategoriesContent() {
                   onClick={() => handleCategoryClick(category.id)}
                 />
               ))}
+            </div>
+          )}
+
+          {/* Performance Notice */}
+          {categoriesWithProgress.length > 0 && (
+            <div className="mt-8 text-center">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Loaded {categoriesWithProgress.length} categories with progress data in a single optimized request
+              </p>
             </div>
           )}
         </div>

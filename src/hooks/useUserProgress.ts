@@ -1,4 +1,4 @@
-// src/hooks/useUserProgress.ts - UPDATED to handle real API responses
+// src/hooks/useUserProgress.ts  
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userProgressApiService } from '@/lib/api/userProgressService';

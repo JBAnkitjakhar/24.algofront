@@ -1,4 +1,4 @@
-// src/hooks/useCategoryManagement.ts - COMPLETE UPDATED FILE
+// src/hooks/useCategoryManagement.ts - UPDATED with optimized hook
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { categoryApiService } from '@/lib/api/categoryService';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import type { 
   Category, 
   CategoryStats, 
+  CategoryWithProgress, // NEW TYPE
   CreateCategoryRequest, 
   UpdateCategoryRequest 
 } from '@/types';
@@ -27,6 +28,29 @@ export function useCategories() {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchInterval: 10 * 60 * 1000, // Auto-refetch every 10 minutes
+  });
+}
+
+/**
+ * NEW: Optimized hook to get all categories with stats and user progress
+ * This replaces useCategoriesWithStats() and eliminates N+1 queries
+ * Single API call fetches everything needed for categories page
+ */
+export function useCategoriesWithProgress() {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS,
+    queryFn: async (): Promise<CategoryWithProgress[]> => {
+      const response = await categoryApiService.getCategoriesWithProgress();
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new Error(response.message || 'Failed to fetch categories with progress');
+    },
+    enabled: !!user, // Only fetch when user is logged in
+    staleTime: 3 * 60 * 1000, // 3 minutes - shorter since this includes user progress
+    refetchInterval: 5 * 60 * 1000, // Auto-refetch every 5 minutes
   });
 }
 
@@ -67,10 +91,13 @@ export function useCategoryStats(id: string) {
 }
 
 /**
- * NEW HOOK: Get all categories with their stats combined
- * This solves the hooks-in-callback problem by fetching everything at the component level
+ * DEPRECATED: Use useCategoriesWithProgress() instead
+ * This old hook is kept for backward compatibility but should not be used
+ * The new optimized endpoint eliminates the N+1 query problem
  */
 export function useCategoriesWithStats() {
+  console.warn('useCategoriesWithStats() is deprecated. Use useCategoriesWithProgress() instead for better performance.');
+  
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   
   // Create a single query that fetches all stats at once using useQuery with dependencies
@@ -155,10 +182,11 @@ export function useCreateCategory() {
       throw new Error(response.message || 'Failed to create category');
     },
     onSuccess: (newCategory) => {
-      // Invalidate and refetch categories list
+      // Invalidate all category queries
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.LIST });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS }); // NEW
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN.STATS });
-      // Also invalidate the combined categories-with-stats query
+      // Also invalidate the old combined query if still in use
       queryClient.invalidateQueries({ queryKey: ['categories-with-stats'] });
       
       toast.success(`Category "${newCategory.name}" created successfully`);
@@ -202,11 +230,12 @@ export function useUpdateCategory() {
       throw new Error(response.message || 'Failed to update category');
     },
     onSuccess: (updatedCategory, variables) => {
-      // Invalidate and refetch related queries
+      // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.LIST });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS }); // NEW
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.DETAIL(variables.id) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.STATS(variables.id) });
-      // Also invalidate the combined categories-with-stats query
+      // Also invalidate the old combined query if still in use
       queryClient.invalidateQueries({ queryKey: ['categories-with-stats'] });
       
       toast.success(`Category "${updatedCategory.name}" updated successfully`);
@@ -241,10 +270,11 @@ export function useDeleteCategory() {
     onSuccess: (result, categoryId) => {
       // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.LIST });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS }); // NEW
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.DETAIL(categoryId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.STATS(categoryId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN.STATS });
-      // Also invalidate the combined categories-with-stats query
+      // Also invalidate the old combined query if still in use
       queryClient.invalidateQueries({ queryKey: ['categories-with-stats'] });
 
       // Success message with warning about deleted questions

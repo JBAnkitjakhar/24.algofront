@@ -1,5 +1,4 @@
 // src/types/index.ts 
-
 export * from './auth';
 export * from './api';
 export * from './admin'; // This now includes user management, category, question, and approach types
@@ -17,6 +16,7 @@ export type {
   RoleChangeRequest,
   Category,
   CategoryStats,
+  CategoryWithProgress, // NEW: Optimized category type with embedded progress
   CreateCategoryRequest,
   UpdateCategoryRequest,
   DeleteCategoryResponse,
@@ -31,13 +31,17 @@ export type {
   ImageUploadResponse,
   FileUploadResponse,
   Solution,
-  // NEW: Approach types
+  // Approach types
   ApproachDTO,
   CreateApproachRequest,
   UpdateApproachRequest,
   ApproachLimitsResponse,
   ApproachSizeUsage,
   ApproachStats,
+  // User Progress types
+  UserProgressStats,
+  CategoryProgressStats,
+  RecentSolvedQuestion,
 } from './admin';
 
 // Export UserRole and QuestionLevel as both type and value (enum)

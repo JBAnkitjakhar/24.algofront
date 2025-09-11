@@ -45,7 +45,7 @@ function ErrorState({ error }: { error: Error }) {
 }
 
 function Content() {
-  const { user, isAdmin } = useAuth();
+  const { user} = useAuth();
   const { 
     data: progressStats, 
     isLoading: statsLoading, 
@@ -330,29 +330,7 @@ function Content() {
                 </div>
               </div>
             </div>
-
-            {/* Admin Access - Only shows for admins */}
-            {isAdmin() && (
-              <div className="lg:col-span-1">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Admin Access
-                    </h3>
-                  </div>
-                  <div className="p-6">
-                    <Link
-                      href="/admin"
-                      className="w-full flex items-center justify-center px-4 py-2 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors font-medium"
-                    >
-                      Admin Dashboard →
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
-
         </div>
       </div>
     </UserLayout>

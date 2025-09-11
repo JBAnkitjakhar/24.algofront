@@ -1,4 +1,4 @@
-// src/lib/api/categoryService.ts - Category management API service
+// src/lib/api/categoryService.ts - UPDATED with optimized endpoint
 
 import { apiClient } from './client';
 import type { ApiResponse } from '@/types/api';
@@ -7,7 +7,8 @@ import type {
   CategoryStats, 
   CreateCategoryRequest, 
   UpdateCategoryRequest,
-  DeleteCategoryResponse 
+  DeleteCategoryResponse,
+  CategoryWithProgress // NEW TYPE - we'll need to define this
 } from '@/types';
 import { CATEGORY_ENDPOINTS } from '@/constants';
 
@@ -18,6 +19,15 @@ class CategoryApiService {
    */
   async getAllCategories(): Promise<ApiResponse<Category[]>> {
     return await apiClient.get<Category[]>(CATEGORY_ENDPOINTS.LIST);
+  }
+
+  /**
+   * NEW: Get all categories with their stats and user progress in single call
+   * Matches: GET /api/categories/with-progress
+   * This eliminates N+1 queries by fetching everything at once
+   */
+  async getCategoriesWithProgress(): Promise<ApiResponse<CategoryWithProgress[]>> {
+    return await apiClient.get<CategoryWithProgress[]>(CATEGORY_ENDPOINTS.WITH_PROGRESS);
   }
 
   /**

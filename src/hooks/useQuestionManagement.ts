@@ -10,6 +10,7 @@ import type {
   Question, 
   QuestionDetail,
   QuestionPageResponse,
+  QuestionSummaryPageResponse,
   QuestionStats,
   CreateQuestionRequest, 
   UpdateQuestionRequest,
@@ -17,7 +18,33 @@ import type {
 } from '@/types';
 
 /**
- * Hook to get all questions with pagination and filters
+ * NEW: Hook to get question summaries with embedded user progress (OPTIMIZED)
+ * This replaces useQuestions + useMultipleQuestionProgress combination
+ * Single API call, no N+1 queries!
+ */
+export function useQuestionSummaries(params?: {
+  page?: number;
+  size?: number;
+  categoryId?: string;
+  level?: string;
+  search?: string;
+}) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: [...QUERY_KEYS.QUESTIONS.LIST, 'summary', params],
+    queryFn: async (): Promise<QuestionSummaryPageResponse> => {
+      return await questionApiService.getQuestionSummaries(params);
+    },
+    enabled: !!user, // Only fetch if user is authenticated
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 5 * 60 * 1000, // Auto-refetch every 5 minutes
+  });
+}
+
+/**
+ * Hook to get all questions with pagination and filters (ADMIN USE - full question data)
  */
 export function useQuestions(params?: {
   page?: number;
@@ -25,9 +52,11 @@ export function useQuestions(params?: {
   categoryId?: string;
   level?: string;
   search?: string;
+  sort?: string;
+  direction?: string;
 }) {
   return useQuery({
-    queryKey: [...QUERY_KEYS.QUESTIONS.LIST, params],
+    queryKey: [...QUERY_KEYS.QUESTIONS.LIST, 'full', params],
     queryFn: async (): Promise<QuestionPageResponse> => {
       const response = await questionApiService.getAllQuestions(params);
       if (response.success && response.data) {
@@ -81,7 +110,7 @@ export function useQuestionStats() {
 }
 
 /**
- * Hook to search questions
+ * Hook to search questions (legacy - for search that needs full question data)
  */
 export function useSearchQuestions(query: string) {
   return useQuery({
@@ -265,7 +294,6 @@ export function useDeleteQuestion() {
 
 /**
  * Hook to upload question image (Admin/SuperAdmin only)
- * FIXED: No duplicate success toasts - only show when multiple files uploaded
  */
 export function useUploadQuestionImage() {
   const { isAdmin } = useAuth();
@@ -289,7 +317,6 @@ export function useUploadQuestionImage() {
       }
       throw new Error(response.message || 'Failed to upload image');
     },
-    // FIXED: Don't show individual success toasts - let the caller handle batch notifications
     onError: (error: Error) => {
       toast.error(`Failed to upload image: ${error.message}`);
     },

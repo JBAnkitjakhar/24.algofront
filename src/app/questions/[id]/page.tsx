@@ -1,4 +1,4 @@
-// src/app/questions/[id]/page.tsx - UPDATED to hide compiler when editing approach
+// src/app/questions/[id]/page.tsx  
 
 'use client';
 

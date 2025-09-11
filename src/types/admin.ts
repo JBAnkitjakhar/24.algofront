@@ -554,3 +554,82 @@ export interface VisualizerFilesResponse {
   count: number;
   solutionId: string;
 }
+
+// Question Summary types (for optimized questions list)
+export interface QuestionSummary {
+  id: string;
+  title: string;
+  categoryId: string;
+  categoryName: string;
+  level: QuestionLevel;
+  createdAt: string; // ISO string
+  userProgress: {
+    solved: boolean;
+    solvedAt: string | null; // ISO string
+    approachCount: number;
+  };
+}
+
+export interface QuestionSummaryPageResponse {
+  content: QuestionSummary[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: {
+      empty: boolean;
+      sorted: boolean;
+      unsorted: boolean;
+    };
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  last: boolean;
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  sort: {
+    empty: boolean;
+    sorted: boolean;
+    unsorted: boolean;
+  };
+  first: boolean;
+  numberOfElements: number;
+  empty: boolean;
+}
+
+/**
+ * NEW: Combined category with stats and user progress for optimized endpoint
+ * This eliminates N+1 queries by getting everything in one API call
+ */
+export interface CategoryWithProgress {
+  // Category basic info
+  id: string;
+  name: string;
+  createdByName: string;
+  createdById: string;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+  
+  // Category statistics (embedded)
+  questionStats: {
+    total: number;
+    byLevel: {
+      easy: number;
+      medium: number;
+      hard: number;
+    };
+  };
+  
+  // User progress for this category (embedded)
+  userProgress: {
+    solved: number;
+    solvedByLevel: {
+      easy: number;
+      medium: number;
+      hard: number;
+    };
+    progressPercentage: number;
+  };
+}

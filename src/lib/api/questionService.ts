@@ -1,4 +1,4 @@
-// src/lib/api/questionService.ts - UPDATED with sorting support
+// src/lib/api/questionService.ts - UPDATED with new summary endpoint
 
 import { apiClient } from './client';
 import type { ApiResponse } from '@/types/api';
@@ -6,6 +6,8 @@ import type {
   Question, 
   QuestionDetail,
   QuestionPageResponse,
+  QuestionSummary,
+  QuestionSummaryPageResponse,
   QuestionStats,
   CreateQuestionRequest, 
   UpdateQuestionRequest 
@@ -14,7 +16,43 @@ import { QUESTION_ENDPOINTS } from '@/constants';
 
 class QuestionApiService {
   /**
-   * Get all questions with pagination, filters, and sorting
+   * NEW: Get question summaries with embedded user progress (OPTIMIZED - no N+1 queries)
+   * Matches: GET /api/questions/summary?page=0&size=20&categoryId={id}&level={level}&search={term}
+   * This replaces the need for separate progress API calls for each question
+   */
+  async getQuestionSummaries(params?: {
+    page?: number;
+    size?: number;
+    categoryId?: string;
+    level?: string;
+    search?: string;
+  }): Promise<QuestionSummaryPageResponse> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+      if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+      if (params?.categoryId) queryParams.append('categoryId', params.categoryId);
+      if (params?.level) queryParams.append('level', params.level);
+      if (params?.search) queryParams.append('search', params.search);
+
+      const url = queryParams.toString() 
+        ? `${QUESTION_ENDPOINTS.SUMMARY}?${queryParams.toString()}`
+        : QUESTION_ENDPOINTS.SUMMARY;
+
+      const response = await apiClient.get<QuestionSummaryPageResponse>(url);
+      
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new Error(response.message || 'Failed to fetch question summaries');
+    } catch (error) {
+      console.error('Error fetching question summaries:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all questions with pagination, filters, and sorting (ADMIN USE - full question data)
    * Matches: GET /api/questions?page=0&size=20&categoryId={id}&level={level}&search={term}&sort={field}&direction={asc|desc}
    */
   async getAllQuestions(params?: {
@@ -23,8 +61,8 @@ class QuestionApiService {
     categoryId?: string;
     level?: string;
     search?: string;
-    sort?: string;        // NEW: Sort field
-    direction?: string;   // NEW: Sort direction
+    sort?: string;
+    direction?: string;
   }): Promise<ApiResponse<QuestionPageResponse>> {
     const queryParams = new URLSearchParams();
     if (params?.page !== undefined) queryParams.append('page', params.page.toString());
@@ -33,7 +71,7 @@ class QuestionApiService {
     if (params?.level) queryParams.append('level', params.level);
     if (params?.search) queryParams.append('search', params.search);
     
-    // ADD SORTING PARAMETERS
+    // Sorting parameters
     if (params?.sort) queryParams.append('sort', params.sort);
     if (params?.direction) queryParams.append('direction', params.direction);
 
@@ -92,7 +130,7 @@ class QuestionApiService {
   }
 
   /**
-   * Search questions
+   * Search questions (legacy - for search functionality that needs full question data)
    * Matches: GET /api/questions/search?q={term}
    */
   async searchQuestions(query: string): Promise<ApiResponse<Question[]>> {

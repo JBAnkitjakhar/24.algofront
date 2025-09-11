@@ -30,6 +30,7 @@ export const ADMIN_ENDPOINTS = {
 // Category management endpoints
 export const CATEGORY_ENDPOINTS = {
   LIST: `${API_BASE_URL}/categories`,
+  WITH_PROGRESS: `${API_BASE_URL}/categories/with-progress`, // NEW: Optimized endpoint
   CREATE: `${API_BASE_URL}/categories`,
   GET_BY_ID: (id: string) => `${API_BASE_URL}/categories/${id}`,
   UPDATE: (id: string) => `${API_BASE_URL}/categories/${id}`,
@@ -41,6 +42,7 @@ export const CATEGORY_ENDPOINTS = {
 // Question management endpoints
 export const QUESTION_ENDPOINTS = {
   LIST: `${API_BASE_URL}/questions`,
+  SUMMARY: `${API_BASE_URL}/questions/summary`, // NEW: Optimized endpoint with user progress
   CREATE: `${API_BASE_URL}/questions`,
   GET_BY_ID: (id: string) => `${API_BASE_URL}/questions/${id}`,
   UPDATE: (id: string) => `${API_BASE_URL}/questions/${id}`,
@@ -200,6 +202,7 @@ export const QUERY_KEYS = {
   },
   CATEGORIES: {
     LIST: ['categories', 'list'] as const,
+    WITH_PROGRESS: ['categories', 'with-progress'] as const, // NEW: Optimized query key
     DETAIL: (id: string) => ['categories', 'detail', id] as const,
     STATS: (id: string) => ['categories', 'stats', id] as const,
     PROGRESS: (id: string) => ['categories', 'progress', id] as const,
