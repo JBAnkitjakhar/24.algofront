@@ -1,4 +1,4 @@
-// src/hooks/useQuestionManagement.ts  
+// src/hooks/useQuestionManagement.ts - Complete Phase 1 Implementation
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { questionApiService } from '@/lib/api/questionService';
@@ -18,9 +18,8 @@ import type {
 } from '@/types';
 
 /**
- * NEW: Hook to get question summaries with embedded user progress (OPTIMIZED)
- * This replaces useQuestions + useMultipleQuestionProgress combination
- * Single API call, no N+1 queries!
+ * PHASE 1: Hook to get question summaries with embedded user progress
+ * Always fetches fresh data on page refresh
  */
 export function useQuestionSummaries(params?: {
   page?: number;
@@ -37,9 +36,9 @@ export function useQuestionSummaries(params?: {
       return await questionApiService.getQuestionSummaries(params);
     },
     enabled: !!user, // Only fetch if user is authenticated
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 5 * 60 * 1000, // Auto-refetch every 5 minutes
+    
+    // PHASE 1: Use global defaults (staleTime: 0, refetchOnMount: true)
+    // This ensures fresh data on every page refresh and navigation
   });
 }
 
@@ -64,13 +63,14 @@ export function useQuestions(params?: {
       }
       throw new Error(response.message || 'Failed to fetch questions');
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    refetchInterval: 5 * 60 * 1000, // Auto-refetch every 5 minutes
+    
+    // PHASE 1: Use global defaults for admin pages too
+    // Admin needs fresh data when questions are updated
   });
 }
 
 /**
- * Hook to get question by ID
+ * PHASE 1: Hook to get question by ID - fresh data when navigating to question
  */
 export function useQuestionById(id: string) {
   const { user } = useAuth();
@@ -85,7 +85,10 @@ export function useQuestionById(id: string) {
       throw new Error(response.message || 'Failed to fetch question');
     },
     enabled: !!id && !!user, // Only fetch if user is authenticated
-    staleTime: 3 * 60 * 1000, // 3 minutes
+    
+    // PHASE 1: Use global defaults for fresh data
+    // This ensures when user navigates back to question after marking solved/unsolved,
+    // the data is fresh and shows correct solved status
   });
 }
 
@@ -105,7 +108,8 @@ export function useQuestionStats() {
       throw new Error(response.message || 'Failed to fetch question stats');
     },
     enabled: isAdmin(), // Only admins can see stats
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    
+    // PHASE 1: Use global defaults - admin stats should be fresh
   });
 }
 
@@ -123,12 +127,14 @@ export function useSearchQuestions(query: string) {
       throw new Error(response.message || 'Failed to search questions');
     },
     enabled: !!query.trim() && query.length >= 2, // Only search if query has at least 2 characters
-    staleTime: 30 * 1000, // 30 seconds for search results
+    
+    // PHASE 1: Search results should be fresh
+    // Use global defaults
   });
 }
 
 /**
- * Hook to create question (Admin/SuperAdmin only)
+ * PHASE 1 ENHANCED: Hook to create question with comprehensive cache invalidation
  */
 export function useCreateQuestion() {
   const queryClient = useQueryClient();
@@ -185,11 +191,21 @@ export function useCreateQuestion() {
       throw new Error(response.message || 'Failed to create question');
     },
     onSuccess: (newQuestion) => {
-      // Invalidate and refetch questions list and stats
+      // PHASE 1: Comprehensive cache invalidation for question creation
+      
+      // Invalidate all question-related queries
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.QUESTIONS.LIST });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.QUESTIONS.STATS });
+      
+      // Invalidate admin stats
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN.STATS });
+      
+      // CRITICAL: Invalidate category stats since question count increased
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.STATS(newQuestion.categoryId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS });
+      
+      // Also invalidate the old combined categories query if still in use
+      queryClient.invalidateQueries({ queryKey: ['categories-with-stats'] });
       
       toast.success(`Question "${newQuestion.title}" created successfully`);
     },
@@ -200,7 +216,7 @@ export function useCreateQuestion() {
 }
 
 /**
- * Hook to update question (Admin/SuperAdmin only)
+ * PHASE 1 ENHANCED: Hook to update question with comprehensive cache invalidation
  */
 export function useUpdateQuestion() {
   const queryClient = useQueryClient();
@@ -242,11 +258,27 @@ export function useUpdateQuestion() {
       throw new Error(response.message || 'Failed to update question');
     },
     onSuccess: (updatedQuestion, variables) => {
-      // Invalidate related queries
+      // PHASE 1: Comprehensive cache invalidation for question updates
+      
+      // Invalidate all question-related queries
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.QUESTIONS.LIST });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.QUESTIONS.DETAIL(variables.id) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.QUESTIONS.STATS });
+      
+      // Invalidate admin stats
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN.STATS });
+      
+      // CRITICAL: Question updates might affect category stats
+      // (e.g., if question changed category or difficulty level)
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS });
+      queryClient.invalidateQueries({ queryKey: ['categories-with-stats'] });
+      
+      // Invalidate specific category stats
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          query.queryKey[0] === 'categories' && 
+          query.queryKey[1] === 'stats'
+      });
       
       toast.success(`Question "${updatedQuestion.title}" updated successfully`);
     },
@@ -257,8 +289,7 @@ export function useUpdateQuestion() {
 }
 
 /**
- * Hook to delete question (Admin/SuperAdmin only)
- * WARNING: This will also delete all solutions and user progress!
+ * PHASE 1 ENHANCED: Hook to delete question with comprehensive cache invalidation
  */
 export function useDeleteQuestion() {
   const queryClient = useQueryClient();
@@ -278,11 +309,32 @@ export function useDeleteQuestion() {
       throw new Error(response.message || 'Failed to delete question');
     },
     onSuccess: (result, questionId) => {
-      // Invalidate all related queries
+      // PHASE 1: Comprehensive cache invalidation for question deletion
+      
+      // Invalidate all question-related queries
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.QUESTIONS.LIST });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.QUESTIONS.DETAIL(questionId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.QUESTIONS.STATS });
+      
+      // Invalidate admin stats
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN.STATS });
+      
+      // CRITICAL: Question deletion affects category stats and user progress
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS });
+      queryClient.invalidateQueries({ queryKey: ['categories-with-stats'] });
+      
+      // Invalidate all category stats since question count decreased
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          query.queryKey[0] === 'categories' && 
+          query.queryKey[1] === 'stats'
+      });
+      
+      // Invalidate user progress since question and related progress are deleted
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          query.queryKey[0] === 'userProgress'
+      });
 
       toast.success('Question deleted successfully. All related solutions and progress have been removed.');
     },
@@ -336,7 +388,11 @@ export function useFileConfig() {
       }
       throw new Error(response.message || 'Failed to fetch file config');
     },
-    staleTime: 10 * 60 * 1000, // 10 minutes - config doesn't change often
-    retry: 1, // Only retry once for config
+    
+    // File config can be cached longer since it rarely changes
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnMount: false, // Don't refetch config on every mount
+    refetchOnWindowFocus: false, // Don't refetch config on focus
   });
 }

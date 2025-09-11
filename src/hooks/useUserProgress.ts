@@ -1,4 +1,4 @@
-// src/hooks/useUserProgress.ts  
+// src/hooks/useUserProgress.ts - Corrected API Response Handling
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userProgressApiService } from '@/lib/api/userProgressService';
@@ -24,9 +24,7 @@ export function useCurrentUserProgressStats() {
       return await userProgressApiService.getCurrentUserProgressStats();
     },
     enabled: !!user, // Only fetch if user is authenticated
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
+    // PHASE 1: Use global defaults (staleTime: 0, refetchOnMount: true)
   });
 }
 
@@ -42,14 +40,13 @@ export function useCurrentUserRecentProgress() {
       return await userProgressApiService.getCurrentUserRecentProgress();
     },
     enabled: !!user,
-    staleTime: 1 * 60 * 1000, // 1 minute
-    gcTime: 3 * 60 * 1000, // 3 minutes
-    retry: 2,
+    // PHASE 1: Use global defaults for fresh recent progress
   });
 }
 
 /**
- * Hook to get progress for specific question
+ * PHASE 1 FIX: Hook to get progress for specific question
+ * Now properly handles 404 errors when question hasn't been solved
  */
 export function useQuestionProgress(questionId: string) {
   const { user } = useAuth();
@@ -57,12 +54,49 @@ export function useQuestionProgress(questionId: string) {
   return useQuery({
     queryKey: QUERY_KEYS.USER_PROGRESS.QUESTION_PROGRESS(questionId),
     queryFn: async (): Promise<UserProgressDTO | null> => {
-      return await userProgressApiService.getQuestionProgress(questionId);
+      try {
+        const response = await userProgressApiService.getQuestionProgress(questionId);
+        return response;
+      } catch (error: unknown) {
+        // Handle 404s gracefully - question hasn't been solved yet
+        const axiosError = error as { response?: { status?: number }; status?: number; message?: string };
+        
+        if (axiosError?.response?.status === 404 || 
+            axiosError?.status === 404 || 
+            axiosError?.message?.includes('404') ||
+            axiosError?.message?.includes('Not Found')) {
+          return null; // This is expected behavior
+        }
+        throw error; // Re-throw other errors
+      }
     },
     enabled: !!user && !!questionId,
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 2 * 60 * 1000, // 2 minutes
-    retry: false, // Don't retry - 404s are expected for questions without progress
+    retry: (failureCount, error: unknown) => {
+      // Don't retry on 404 errors
+      const axiosError = error as { response?: { status?: number }; status?: number; message?: string };
+      
+      if (axiosError?.response?.status === 404 || 
+          axiosError?.status === 404 || 
+          axiosError?.message?.includes('404') ||
+          axiosError?.message?.includes('Not Found')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+    // PHASE 1: Use global defaults but don't show 404 errors in console
+    meta: {
+      errorHandler: (error: unknown) => {
+        // Only log actual errors, not 404s
+        const axiosError = error as { response?: { status?: number }; status?: number; message?: string };
+        
+        if (!(axiosError?.response?.status === 404 || 
+              axiosError?.status === 404 || 
+              axiosError?.message?.includes('404') ||
+              axiosError?.message?.includes('Not Found'))) {
+          console.error('Error fetching question progress:', error);
+        }
+      }
+    }
   });
 }
 
@@ -78,14 +112,12 @@ export function useCategoryProgress(categoryId: string) {
       return await userProgressApiService.getCategoryProgress(categoryId);
     },
     enabled: !!user && !!categoryId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
+    // PHASE 1: Use global defaults for fresh category progress
   });
 }
 
 /**
- * Hook to update question progress (mark as solved/unsolved)
+ * PHASE 1 ENHANCED: Hook to update question progress with comprehensive cache invalidation
  */
 export function useUpdateQuestionProgress() {
   const queryClient = useQueryClient();
@@ -108,10 +140,15 @@ export function useUpdateQuestionProgress() {
     onSuccess: (updatedProgress, variables) => {
       const { questionId, solved } = variables;
 
-      // Invalidate and refetch related queries
-      queryClient.invalidateQueries({ 
-        queryKey: QUERY_KEYS.USER_PROGRESS.QUESTION_PROGRESS(questionId) 
-      });
+      // PHASE 1: Comprehensive cache invalidation when user progress changes
+      
+      // Update specific question progress
+      queryClient.setQueryData(
+        QUERY_KEYS.USER_PROGRESS.QUESTION_PROGRESS(questionId),
+        updatedProgress
+      );
+
+      // Invalidate user progress queries
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.USER_PROGRESS.CURRENT_STATS 
       });
@@ -119,9 +156,24 @@ export function useUpdateQuestionProgress() {
         queryKey: QUERY_KEYS.USER_PROGRESS.CURRENT_RECENT 
       });
       
-      // Invalidate question detail to update solved status
+      // CRITICAL: Invalidate question detail to update solved status
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.QUESTIONS.DETAIL(questionId) 
+      });
+
+      // CRITICAL: Invalidate questions list since it shows solved status
+      queryClient.invalidateQueries({ 
+        queryKey: QUERY_KEYS.QUESTIONS.LIST 
+      });
+
+      // CRITICAL: Invalidate categories since progress affects category stats
+      queryClient.invalidateQueries({ 
+        queryKey: QUERY_KEYS.CATEGORIES.WITH_PROGRESS 
+      });
+
+      // Also invalidate the old combined categories query if still in use
+      queryClient.invalidateQueries({ 
+        queryKey: ['categories-with-stats'] 
       });
 
       // Invalidate category progress queries
@@ -169,12 +221,19 @@ export function useMultipleQuestionProgress(questionIds: string[]) {
         return {};
       }
 
-      return await userProgressApiService.getBulkQuestionProgress(questionIds);
+      try {
+        return await userProgressApiService.getBulkQuestionProgress(questionIds);
+      } catch (error) {
+        // Handle errors gracefully - return empty object
+        console.warn('Failed to fetch bulk question progress:', error);
+        return {};
+      }
     },
     enabled: !!user && questionIds.length > 0,
-    staleTime: 1 * 60 * 1000, // 1 minute
-    gcTime: 3 * 60 * 1000, // 3 minutes
-    retry: false, // Don't retry since the bulk endpoint handles errors gracefully
+    // PHASE 1: Shorter cache for bulk data but still fresh
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 2 * 60 * 1000, // 2 minutes
+    retry: false, // Don't retry since we handle errors gracefully
   });
 }
 
@@ -192,9 +251,9 @@ export function useUserProgressStats(userId: string) {
       return await userProgressApiService.getUserProgressStats(userId);
     },
     enabled: isAdmin() && !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2,
+    // Admin data can have slightly longer cache
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
@@ -210,8 +269,8 @@ export function useAllUserProgress(userId: string) {
       return await userProgressApiService.getAllUserProgress(userId);
     },
     enabled: isAdmin() && !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2,
+    // Admin data can have slightly longer cache
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
