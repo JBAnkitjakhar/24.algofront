@@ -1,4 +1,4 @@
-// src/app/questions/page.tsx  
+// src/app/questions/page.tsx - FULLY OPTIMIZED VERSION
 
 'use client';
 
@@ -7,16 +7,16 @@ import UserLayout from '@/components/layout/UserLayout';
 import { BookOpen, Search, Filter, Clock, CheckCircle2, Circle } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuestionSummaries } from '@/hooks/useQuestionManagement'; // NEW: Uses optimized hook
-import { useCategories } from '@/hooks/useCategoryManagement';
+import { useQuestionSummaries } from '@/hooks/useOptimizedQuestions'; // UPDATED IMPORT
 import { QUESTION_LEVEL_LABELS, QUESTION_LEVEL_COLORS } from '@/constants';
 import { dateUtils } from '@/lib/utils/common';
-import type { QuestionLevel, QuestionSummary } from '@/types';
+import type { QuestionLevel, QuestionSummaryDTO} from '@/types';
+import { useCategories } from '@/hooks/useCategoryManagement';
 
 function QuestionsContent() {
   const router = useRouter();
-  const [searchInput, setSearchInput] = useState(''); // For immediate UI updates
-  const [searchTerm, setSearchTerm] = useState(''); // For API calls with debounce
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -27,15 +27,12 @@ function QuestionsContent() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearchTerm(searchInput);
-      setPage(0); // Reset to first page when search changes
+      setPage(0);
     }, 1000);
-
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // API calls
-  const { data: categories = [] } = useCategories();
-  
+  // Build query parameters
   const questionParams = useMemo(() => ({
     page,
     size: pageSize,
@@ -44,18 +41,20 @@ function QuestionsContent() {
     search: searchTerm.trim() || undefined,
   }), [page, selectedCategory, selectedDifficulty, searchTerm]);
 
-  // NEW: Single API call that includes user progress data - NO N+1 QUERIES!
+  // SINGLE API CALL - Gets questions with embedded user progress
   const { 
     data: questionsData, 
     isLoading: questionsLoading,
     error: questionsError 
   } = useQuestionSummaries(questionParams);
 
+  // Get categories for filter dropdown (lightweight call)
+  const { data: categories = [] } = useCategories();
+
   const questions = questionsData?.content || [];
   const totalPages = questionsData?.totalPages || 0;
   const totalElements = questionsData?.totalElements || 0;
 
-  // Updated statuses - only Solved and Unsolved
   const statuses = ['Solved', 'Unsolved'];
 
   const getDifficultyColor = (difficulty: QuestionLevel) => {
@@ -68,14 +67,13 @@ function QuestionsContent() {
 
   const handleCategoryFilter = (categoryId: string) => {
     setSelectedCategory(categoryId);
-    setPage(0); // Reset to first page
+    setPage(0);
   };
 
-  // OPTIMIZED: Filter questions by status using embedded progress data (no additional API calls)
-  const filteredQuestions = questions.filter((question: QuestionSummary) => {
+  // Filter questions by status using embedded progress data
+  const filteredQuestions = questions.filter((question: QuestionSummaryDTO) => {
     if (selectedStatus === 'all') return true;
     
-    // NEW: Use embedded userProgress data instead of separate API calls
     const isSolved = question.userProgress.solved;
     if (selectedStatus === 'Solved') return isSolved;
     if (selectedStatus === 'Unsolved') return !isSolved;
@@ -128,8 +126,7 @@ function QuestionsContent() {
                 Practice Questions
               </h1>
               <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                Challenge yourself with coding problems ranging from easy to hard. Track your progress
-                and improve your problem-solving skills.
+                Challenge yourself with coding problems. All progress is tracked in real-time.
               </p>
             </div>
           </div>
@@ -139,12 +136,12 @@ function QuestionsContent() {
           {/* Filters */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Search with debounce */}
+              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search questions by title..."
+                  placeholder="Search questions..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -178,7 +175,7 @@ function QuestionsContent() {
                 ))}
               </select>
 
-              {/* Status Filter - Only Solved and Unsolved */}
+              {/* Status Filter */}
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
@@ -193,10 +190,13 @@ function QuestionsContent() {
 
             <div className="mt-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
               <span>Showing {filteredQuestions.length} of {totalElements} questions</span>
+              <span className="text-green-600 dark:text-green-400">
+                ✓ Real-time updates enabled
+              </span>
             </div>
           </div>
 
-          {/* Questions List - OPTIMIZED WITH EMBEDDED USER PROGRESS */}
+          {/* Questions List */}
           {filteredQuestions.length === 0 ? (
             <div className="text-center py-12">
               <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -209,9 +209,8 @@ function QuestionsContent() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredQuestions.map((question: QuestionSummary) => {
+              {filteredQuestions.map((question: QuestionSummaryDTO) => {
                 const levelColors = getDifficultyColor(question.level);
-                // OPTIMIZED: Use embedded userProgress data - NO additional API calls!
                 const isSolved = question.userProgress.solved;
                 
                 return (
@@ -222,7 +221,7 @@ function QuestionsContent() {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
-                        {/* Status Icon - OPTIMIZED: Uses embedded data */}
+                        {/* Status Icon */}
                         <div className="flex-shrink-0 pt-1">
                           {isSolved ? (
                             <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -233,7 +232,6 @@ function QuestionsContent() {
 
                         {/* Question Info */}
                         <div className="flex-1">
-                          {/* Title and difficulty badge */}
                           <div className="flex items-center space-x-3 mb-2">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                               {question.title}
@@ -243,7 +241,6 @@ function QuestionsContent() {
                             </span>
                           </div>
 
-                          {/* Category, creation date, and approach count */}
                           <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
                             <div className="flex items-center space-x-1">
                               <Filter className="w-4 h-4" />
@@ -253,14 +250,12 @@ function QuestionsContent() {
                               <Clock className="w-4 h-4" />
                               <span>Created {dateUtils.formatRelativeTime(question.createdAt)}</span>
                             </div>
-                            {/* NEW: Show approach count from embedded data */}
                             {question.userProgress.approachCount > 0 && (
                               <div className="flex items-center space-x-1">
                                 <BookOpen className="w-4 h-4" />
                                 <span>{question.userProgress.approachCount} approach{question.userProgress.approachCount !== 1 ? 'es' : ''}</span>
                               </div>
                             )}
-                            {/* Show solved date if solved */}
                             {isSolved && question.userProgress.solvedAt && (
                               <div className="flex items-center space-x-1">
                                 <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />

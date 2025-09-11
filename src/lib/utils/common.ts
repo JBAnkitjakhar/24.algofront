@@ -1,7 +1,6 @@
-// src/lib/utils/common.ts - Common utilities
-// ============================================================================
+// src/lib/utils/common.ts
+
 // DATE UTILITIES
-// ============================================================================
 
 export const dateUtils = {
   // Format date for display

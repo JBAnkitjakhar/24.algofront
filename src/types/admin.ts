@@ -633,3 +633,63 @@ export interface CategoryWithProgress {
     progressPercentage: number;
   };
 }
+
+// NEW: Question Summary DTO with embedded user progress (eliminates N+1 queries)
+export interface QuestionSummaryDTO {
+  id: string;
+  title: string;
+  categoryId: string;
+  categoryName: string;
+  level: QuestionLevel;
+  createdAt: string; // ISO date string
+  userProgress: QuestionUserProgressSummary;
+}
+
+export interface QuestionUserProgressSummary {
+  solved: boolean;
+  solvedAt: string | null; // ISO date string or null
+  approachCount: number;
+}
+
+// NEW: Question Summary Page Response (optimized pagination)
+export interface QuestionSummaryPageResponse {
+  content: QuestionSummaryDTO[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number; // current page number
+  first: boolean;
+  last: boolean;
+  numberOfElements: number;
+}
+
+// NEW: Category with embedded progress and stats (eliminates N+1 queries)
+export interface CategoryWithProgress {
+  id: string;
+  name: string;
+  createdByName: string;
+  createdById: string;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  questionStats: CategoryQuestionStats;
+  userProgress: CategoryUserProgressStats;
+}
+
+export interface CategoryQuestionStats {
+  total: number;
+  byLevel: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+}
+
+export interface CategoryUserProgressStats {
+  solved: number;
+  solvedByLevel: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+  progressPercentage: number;
+}

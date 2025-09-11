@@ -202,13 +202,14 @@ export const QUERY_KEYS = {
   },
   CATEGORIES: {
     LIST: ['categories', 'list'] as const,
-    WITH_PROGRESS: ['categories', 'with-progress'] as const, // NEW: Optimized query key
+    WITH_PROGRESS: ['categories', 'with-progress'] as const, // NEW: For optimized categories
     DETAIL: (id: string) => ['categories', 'detail', id] as const,
     STATS: (id: string) => ['categories', 'stats', id] as const,
     PROGRESS: (id: string) => ['categories', 'progress', id] as const,
   },
   QUESTIONS: {
     LIST: ['questions', 'list'] as const,
+    SUMMARY: ['questions', 'summary'] as const, // NEW: For optimized summaries
     DETAIL: (id: string) => ['questions', 'detail', id] as const,
     STATS: ['questions', 'stats'] as const,
     SEARCH: (query: string) => ['questions', 'search', query] as const,

@@ -1,4 +1,4 @@
-// src/lib/api/categoryService.ts - UPDATED with optimized endpoint
+// src/lib/api/categoryService.ts  
 
 import { apiClient } from './client';
 import type { ApiResponse } from '@/types/api';
@@ -8,26 +8,26 @@ import type {
   CreateCategoryRequest, 
   UpdateCategoryRequest,
   DeleteCategoryResponse,
-  CategoryWithProgress // NEW TYPE - we'll need to define this
+  CategoryWithProgress // NEW TYPE
 } from '@/types';
 import { CATEGORY_ENDPOINTS } from '@/constants';
 
 class CategoryApiService {
   /**
-   * Get all categories
+   * NEW OPTIMIZED: Get all categories with their stats and user progress in single call
+   * This eliminates N+1 queries by fetching everything at once
+   * Matches: GET /api/categories/with-progress
+   */
+  async getCategoriesWithProgress(): Promise<ApiResponse<CategoryWithProgress[]>> {
+    return await apiClient.get<CategoryWithProgress[]>(CATEGORY_ENDPOINTS.WITH_PROGRESS);
+  }
+
+  /**
+   * LEGACY: Get all categories (basic data only)
    * Matches: GET /api/categories
    */
   async getAllCategories(): Promise<ApiResponse<Category[]>> {
     return await apiClient.get<Category[]>(CATEGORY_ENDPOINTS.LIST);
-  }
-
-  /**
-   * NEW: Get all categories with their stats and user progress in single call
-   * Matches: GET /api/categories/with-progress
-   * This eliminates N+1 queries by fetching everything at once
-   */
-  async getCategoriesWithProgress(): Promise<ApiResponse<CategoryWithProgress[]>> {
-    return await apiClient.get<CategoryWithProgress[]>(CATEGORY_ENDPOINTS.WITH_PROGRESS);
   }
 
   /**
@@ -40,7 +40,7 @@ class CategoryApiService {
 
   /**
    * Create new category (Admin/SuperAdmin only)
-   * Matches: POST /api/categories with { "name": "string" }
+   * Matches: POST /api/categories
    */
   async createCategory(request: CreateCategoryRequest): Promise<ApiResponse<Category>> {
     return await apiClient.post<Category>(CATEGORY_ENDPOINTS.CREATE, {
@@ -50,7 +50,7 @@ class CategoryApiService {
 
   /**
    * Update category (Admin/SuperAdmin only)
-   * Matches: PUT /api/categories/{id} with { "name": "string" }
+   * Matches: PUT /api/categories/{id}
    */
   async updateCategory(id: string, request: UpdateCategoryRequest): Promise<ApiResponse<Category>> {
     return await apiClient.put<Category>(CATEGORY_ENDPOINTS.UPDATE(id), {
@@ -61,14 +61,13 @@ class CategoryApiService {
   /**
    * Delete category (Admin/SuperAdmin only)
    * Matches: DELETE /api/categories/{id}
-   * WARNING: This will also delete all questions in the category!
    */
   async deleteCategory(id: string): Promise<ApiResponse<DeleteCategoryResponse>> {
     return await apiClient.delete<DeleteCategoryResponse>(CATEGORY_ENDPOINTS.DELETE(id));
   }
 
   /**
-   * Get category statistics
+   * LEGACY: Get category statistics (use getCategoriesWithProgress instead)
    * Matches: GET /api/categories/{id}/stats
    */
   async getCategoryStats(id: string): Promise<ApiResponse<CategoryStats>> {

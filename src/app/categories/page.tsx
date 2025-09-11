@@ -1,4 +1,4 @@
-// src/app/categories/page.tsx  
+// src/app/categories/page.tsx - FULLY OPTIMIZED VERSION
 
 "use client";
 
@@ -7,36 +7,26 @@ import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import UserLayout from "@/components/layout/UserLayout";
 import { FolderOpen, Search } from "lucide-react";
-import { useCategoriesWithProgress } from "@/hooks/useCategoryManagement"; // UPDATED IMPORT
-import type { CategoryWithProgress } from "@/types"; // NEW TYPE IMPORT
+import { useCategoriesWithProgress } from "@/hooks/useOptimizedCategories"; // UPDATED IMPORT
+import type { CategoryWithProgress } from "@/types";
 
 function CategoryCard({ category, onClick }: { 
-  category: CategoryWithProgress; // UPDATED TYPE
+  category: CategoryWithProgress;
   onClick: () => void;
 }) {
-  // SIMPLIFIED: Data is now directly available from the single API call
+  // Data is directly available from the single optimized API call
   const totalQuestions = category.questionStats.total;
   const { easy, medium, hard } = category.questionStats.byLevel;
   const completedProblems = category.userProgress.solved;
   const progressPercentage = category.userProgress.progressPercentage;
 
-  // Color schemes for categories
   const colorSchemes = [
-    'bg-blue-500',
-    'bg-green-500',
-    'bg-purple-500',
-    'bg-orange-500',
-    'bg-red-500',
-    'bg-indigo-500',
-    'bg-pink-500',
-    'bg-teal-500',
-    'bg-cyan-500',
-    'bg-emerald-500',
+    'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-red-500',
+    'bg-indigo-500', 'bg-pink-500', 'bg-teal-500', 'bg-cyan-500', 'bg-emerald-500',
   ];
   const colorIndex = Math.abs(category.name.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % colorSchemes.length;
   const bgColor = colorSchemes[colorIndex];
 
-  // Generate icon based on category name
   const getIcon = (name: string) => {
     const lowerName = name.toLowerCase();
     if (lowerName.includes('array')) return '📊';
@@ -57,16 +47,13 @@ function CategoryCard({ category, onClick }: {
       onClick={onClick}
       className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer group relative"
     >
-      {/* ICON POSITIONED ABSOLUTELY ON TOP - 100% VISIBLE */}
+      {/* Icon positioned on top */}
       <div className="absolute top-3 right-3 z-20 w-16 h-16 bg-white bg-opacity-90 dark:bg-gray-800 dark:bg-opacity-90 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm">
-        <span className="text-2xl">
-          {getIcon(category.name)}
-        </span>
+        <span className="text-2xl">{getIcon(category.name)}</span>
       </div>
 
-      {/* Category Header - Clean without background icon */}
+      {/* Category Header */}
       <div className={`${bgColor} p-6 text-white relative overflow-hidden`}>
-        {/* Subtle pattern overlay for visual interest */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-8 translate-x-8 bg-white"></div>
           <div className="absolute bottom-0 left-0 w-20 h-20 rounded-full translate-y-4 -translate-x-4 bg-white"></div>
@@ -78,7 +65,7 @@ function CategoryCard({ category, onClick }: {
         </p>
       </div>
 
-      {/* Category Content - REAL DATA from optimized endpoint */}
+      {/* Category Content */}
       <div className="p-6">
         {/* Stats */}
         <div className="flex items-center justify-between mb-4">
@@ -157,7 +144,7 @@ function CategoriesContent() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
 
-  // UPDATED: Use optimized hook - single API call with all data
+  // SINGLE API CALL - Gets categories with embedded stats and user progress
   const { data: categoriesWithProgress = [], isLoading } = useCategoriesWithProgress();
 
   // Filter categories based on search
@@ -174,9 +161,7 @@ function CategoriesContent() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">
-            Loading categories...
-          </p>
+          <p className="text-gray-600 dark:text-gray-400">Loading categories...</p>
         </div>
       </div>
     );
@@ -194,9 +179,7 @@ function CategoriesContent() {
                 Problem Categories
               </h1>
               <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                Explore different categories of coding problems. Each category
-                contains carefully curated problems to help you master specific
-                algorithms and data structures.
+                Explore different categories of coding problems. Progress is tracked in real-time.
               </p>
             </div>
           </div>
@@ -236,24 +219,24 @@ function CategoriesContent() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredCategories.map((category) => (
-                <CategoryCard
-                  key={category.id}
-                  category={category}
-                  onClick={() => handleCategoryClick(category.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Performance Notice */}
-          {categoriesWithProgress.length > 0 && (
-            <div className="mt-8 text-center">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Loaded {categoriesWithProgress.length} categories with progress data in a single optimized request
-              </p>
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredCategories.map((category) => (
+                  <CategoryCard
+                    key={category.id}
+                    category={category}
+                    onClick={() => handleCategoryClick(category.id)}
+                  />
+                ))}
+              </div>
+              
+              {/* Performance Notice */}
+              <div className="mt-8 text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  ✓ Loaded {categoriesWithProgress.length} categories with real-time progress in a single optimized request
+                </p>
+              </div>
+            </>
           )}
         </div>
       </div>
