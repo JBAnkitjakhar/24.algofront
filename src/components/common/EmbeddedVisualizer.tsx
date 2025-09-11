@@ -155,7 +155,7 @@ export function EmbeddedVisualizer({
         }
 
         const apiBaseUrl =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+          process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
         const url = `${apiBaseUrl}/files/visualizers/${fileId}`;
 
         // console.log(`[Visualizer] Fetching: ${url} with JWT token`);

@@ -320,22 +320,14 @@ class SolutionApiService {
   > {
     return await apiClient.delete(`/files/visualizers/${fileId}`);
   }
-
-  /**
-   * Get visualizer file content for rendering
-   * Matches: GET /api/files/visualizers/{fileId}
-   */
-  // getVisualizerFileUrl(fileId: string): string {
-  //   return `${apiClient.getInstance().defaults.baseURL}/files/visualizers/${fileId}`;
-  // }
-
+ 
   /**
    * FIXED: Get visualizer file URL for direct access
    * This method was missing and causing the admin solutions page to fail
    */
   getVisualizerFileUrl(fileId: string): string {
     const apiBaseUrl =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
     return `${apiBaseUrl}/files/visualizers/${fileId}`;
   }
 
@@ -344,7 +336,7 @@ class SolutionApiService {
    */
   getVisualizerDownloadUrl(fileId: string): string {
     const apiBaseUrl =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
     return `${apiBaseUrl}/files/visualizers/${fileId}/download`;
   }
 
